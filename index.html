@@ -1,0 +1,1180 @@
+<!--
+  Couple Ledger — a shared, mobile-first household expense tracker.
+  Deployable build: single static page backed by a Neon Postgres database
+  through /api/ledger, with a localStorage cache for instant load + offline use.
+  Access is gated by a shared password checked server-side. See README.md.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper: #f2f3f1;
+    --card: #ffffff;
+    --ink: #1a1d1b;
+    --ink-2: #565b57;
+    --ink-3: #8a8f8a;
+    --rule: #e4e5e1;
+    --rule-strong: #d3d5cf;
+    --credit: #1e7a4d;
+    --credit-soft: #e7f2ec;
+    --debit: #c24a38;
+    --debit-soft: #fbe9e5;
+    --focus: #1a1d1b;
+    --shadow: 0 1px 2px rgba(26,29,27,.04), 0 8px 24px rgba(26,29,27,.06);
+    --radius: 16px;
+    --radius-sm: 11px;
+    --sans: "Instrument Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 16px; color: var(--ink); }
+  :focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+
+  .app { max-width: 560px; margin: 0 auto; padding: 0 16px 120px; }
+
+  /* ---------- Header ---------- */
+  .top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 20px 2px 8px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+  .brand h1 {
+    font-family: var(--serif); font-weight: 500; font-size: 21px;
+    letter-spacing: -.02em; margin: 0; white-space: nowrap;
+  }
+  .brand .who { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 12px; flex: none;
+    display: grid; place-items: center; color: var(--ink-2);
+    border: 1px solid var(--rule); background: var(--card);
+    transition: background .15s, color .15s;
+  }
+  .icon-btn:active { background: var(--paper); }
+  .icon-btn svg { width: 19px; height: 19px; }
+
+  /* ---------- Month nav ---------- */
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--radius); padding: 6px; margin: 6px 0 14px;
+    box-shadow: var(--shadow);
+  }
+  .month-nav button.step {
+    width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
+    color: var(--ink-2); transition: background .15s;
+  }
+  .month-nav button.step:hover { background: var(--paper); }
+  .month-nav button.step:disabled { opacity: .32; cursor: default; }
+  .month-label { text-align: center; line-height: 1.15; }
+  .month-label b { font-weight: 600; font-size: 15.5px; letter-spacing: -.01em; }
+  .month-label span { display: block; font-size: 11.5px; color: var(--ink-3); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 20px;
+    padding: 22px 20px 18px; box-shadow: var(--shadow); margin-bottom: 14px;
+  }
+  .hero .eyebrow {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .13em;
+    color: var(--ink-3); font-weight: 600;
+  }
+  .hero .net {
+    font-family: var(--serif); font-weight: 500; letter-spacing: -.03em;
+    font-size: clamp(40px, 13vw, 58px); line-height: 1.02; margin: 6px 0 2px;
+    display: block;
+  }
+  .hero .net.pos { color: var(--credit); }
+  .hero .net.neg { color: var(--debit); }
+  .hero .net.zero { color: var(--ink); }
+  .hero .subnote { font-size: 12.5px; color: var(--ink-2); }
+  .hero .subnote b { font-weight: 600; color: var(--ink); }
+
+  .bar {
+    display: flex; height: 9px; border-radius: 99px; overflow: hidden;
+    background: var(--rule); margin: 16px 0 14px;
+  }
+  .bar i { display: block; height: 100%; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .bar .in { background: var(--credit); }
+  .bar .out { background: var(--debit); }
+
+  .io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .io .cell {
+    border: 1px solid var(--rule); border-radius: var(--radius-sm);
+    padding: 11px 13px; background: var(--paper);
+  }
+  .io .cell .lab { font-size: 11.5px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; font-weight: 500; }
+  .io .cell .val { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -.02em; margin-top: 3px; }
+  .io .in .val { color: var(--credit); }
+  .io .out .val { color: var(--debit); }
+  .dot { width: 8px; height: 8px; border-radius: 99px; flex: none; display: inline-block; }
+
+  /* ---------- Filters ---------- */
+  .filters {
+    display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 14px;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 13px; border-radius: 99px; font-size: 13px; font-weight: 500;
+    border: 1px solid var(--rule); background: var(--card); color: var(--ink-2);
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip[aria-pressed="true"] .dot { box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+
+  .search-wrap { position: relative; margin: 0 2px 12px; display: none; }
+  .search-wrap.open { display: block; }
+  .search-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--ink-3); }
+  .search-wrap input {
+    width: 100%; padding: 12px 14px 12px 38px; border-radius: 12px;
+    border: 1px solid var(--rule); background: var(--card); outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--rule-strong); }
+
+  /* ---------- List ---------- */
+  .day-group { margin-bottom: 6px; }
+  .day-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 14px 4px 6px; position: sticky; top: 0; background: var(--paper); z-index: 2;
+  }
+  .day-head .d { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: .01em; }
+  .day-head .t { font-size: 11.5px; color: var(--ink-3); }
+  .day-head .t.pos { color: var(--credit); }
+  .day-head .t.neg { color: var(--debit); }
+
+  .rows { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .row {
+    display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+    width: 100%; text-align: left; border-bottom: 1px solid var(--rule);
+    transition: background .12s;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:active { background: var(--paper); }
+  .row .badge {
+    width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center;
+    font-size: 15px; background: var(--paper); border: 1px solid var(--rule);
+  }
+  .row .mid { min-width: 0; flex: 1; }
+  .row .mid .note { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .mid .meta { font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; margin-top: 1px; }
+  .row .mid .meta .p { display: inline-flex; align-items: center; gap: 4px; }
+  .row .amt { font-family: var(--serif); font-size: 16.5px; font-weight: 500; letter-spacing: -.01em; flex: none; }
+  .row .amt.credit { color: var(--credit); }
+  .row .amt.debit { color: var(--debit); }
+
+  /* ---------- Summary card ---------- */
+  .summary { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 16px 6px; margin: 18px 0 6px; }
+  .summary h3 { margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+  .person-line { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  .person-line:last-of-type { border-bottom: none; }
+  .person-line .nm { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-weight: 500; font-size: 14px; }
+  .person-line .nm span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .person-line .cols { display: flex; gap: 14px; font-size: 12.5px; }
+  .person-line .cols div { text-align: right; }
+  .person-line .cols .k { color: var(--ink-3); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .person-line .cols .v { font-weight: 600; }
+  .settle { padding: 12px 0 8px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+  .settle b { color: var(--ink); font-weight: 600; }
+
+  .cat-break { margin-top: 4px; }
+  .cat-line { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+  .cat-line .cn { flex: 1; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-line .track { flex: 1.4; height: 6px; border-radius: 99px; background: var(--rule); overflow: hidden; }
+  .cat-line .track i { display: block; height: 100%; background: var(--debit); opacity: .55; }
+  .cat-line .cv { font-weight: 600; font-size: 12.5px; width: 68px; text-align: right; }
+
+  /* ---------- Empty ---------- */
+  .empty { text-align: center; padding: 48px 24px; color: var(--ink-3); }
+  .empty .big { font-family: var(--serif); font-size: 22px; color: var(--ink-2); margin-bottom: 6px; font-weight: 500; }
+  .empty p { font-size: 14px; margin: 0; max-width: 34ch; margin-inline: auto; }
+
+  /* ---------- FAB ---------- */
+  .fab {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 40;
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 15px 22px 15px 18px; border-radius: 99px;
+    background: var(--ink); color: #fff; font-weight: 600; font-size: 15px;
+    box-shadow: 0 6px 20px rgba(26,29,27,.28);
+    transition: transform .18s, box-shadow .18s;
+  }
+  .fab:active { transform: translateX(-50%) scale(.96); }
+  .fab svg { width: 20px; height: 20px; }
+
+  /* ---------- Sheet / modal ---------- */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(20,22,20,.42); z-index: 50;
+    opacity: 0; pointer-events: none; transition: opacity .22s;
+    backdrop-filter: blur(1.5px);
+  }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: var(--card); border-radius: 22px 22px 0 0;
+    max-width: 560px; margin: 0 auto; padding: 8px 18px calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(102%); transition: transform .28s cubic-bezier(.2,.85,.25,1);
+    max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 -10px 40px rgba(26,29,27,.18);
+  }
+  .sheet.open { transform: translateY(0); }
+  .grabber { width: 40px; height: 4px; border-radius: 99px; background: var(--rule-strong); margin: 8px auto 6px; }
+  .sheet h2 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 6px 2px 16px; letter-spacing: -.01em; }
+
+  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .type-toggle button {
+    padding: 13px; border-radius: 12px; border: 1.5px solid var(--rule); font-weight: 600; font-size: 14px;
+    color: var(--ink-2); background: var(--card); transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .type-toggle button svg { width: 17px; height: 17px; }
+  .type-toggle button[data-on="credit"] { border-color: var(--credit); background: var(--credit-soft); color: var(--credit); }
+  .type-toggle button[data-on="debit"] { border-color: var(--debit); background: var(--debit-soft); color: var(--debit); }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; letter-spacing: .02em; }
+  .field input[type="text"], .field input[type="number"], .field input[type="date"], .field select {
+    width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--rule);
+    background: var(--paper); outline: none; transition: border-color .15s, background .15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--ink); background: var(--card); }
+  .amount-input { position: relative; }
+  .amount-input .cur { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-family: var(--serif); font-size: 20px; color: var(--ink-3); pointer-events: none; }
+  .amount-input input { padding-left: 36px !important; font-family: var(--serif); font-size: 22px; font-weight: 500; letter-spacing: -.01em; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .who-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .who-pick button {
+    padding: 12px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--card);
+    display: flex; align-items: center; gap: 8px; justify-content: center; font-weight: 500; font-size: 14px;
+    color: var(--ink-2); transition: all .15s;
+  }
+  .who-pick button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--paper); }
+
+  .cat-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .cat-suggest button {
+    padding: 6px 11px; border-radius: 99px; font-size: 12.5px; border: 1px solid var(--rule);
+    color: var(--ink-2); background: var(--card); transition: all .12s;
+  }
+  .cat-suggest button:active { background: var(--paper); }
+
+  .date-auto {
+    width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--rule);
+    background: var(--paper); display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; font-size: 15px; color: var(--ink); text-align: left; transition: background .15s;
+  }
+  .date-auto:active { background: var(--card); }
+  .date-auto .date-edit { font-size: 12px; font-weight: 600; color: var(--credit); flex: none; }
+  #dateField.revealed { display: block !important; border-color: var(--ink); background: var(--card); }
+
+  .sheet-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn {
+    flex: 1; padding: 15px; border-radius: 13px; font-weight: 600; font-size: 15px; text-align: center;
+    transition: transform .12s, background .15s, opacity .15s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { background: var(--ink); color: #fff; }
+  .btn.primary:disabled { opacity: .4; }
+  .btn.ghost { background: var(--paper); color: var(--ink-2); border: 1px solid var(--rule); flex: 0 0 auto; padding-inline: 18px; }
+  .btn.danger { background: var(--debit-soft); color: var(--debit); flex: 0 0 auto; padding-inline: 18px; }
+
+  /* Settings extras */
+  .seg-title { font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; margin: 20px 2px 10px; }
+  .swatches { display: flex; gap: 8px; margin-top: 8px; }
+  .swatch { width: 30px; height: 30px; border-radius: 99px; border: 2px solid transparent; transition: transform .12s; }
+  .swatch[aria-pressed="true"] { border-color: var(--ink); transform: scale(1.08); }
+  .export-row { display: flex; gap: 10px; margin-top: 8px; }
+  .link-btn { font-size: 13px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 8px 2px; }
+  .note-line { font-size: 12px; color: var(--ink-3); line-height: 1.5; margin-top: 14px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
+    bottom: calc(90px + env(safe-area-inset-bottom)); z-index: 80;
+    background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 500;
+    padding: 11px 18px; border-radius: 99px; opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Password gate ---------- */
+  .gate {
+    position: fixed; inset: 0; z-index: 200; background: var(--paper);
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  .gate.show { display: flex; }
+  .gate .card {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 20px;
+    box-shadow: var(--shadow); padding: 30px 24px; width: 100%; max-width: 360px; text-align: center;
+  }
+  .gate h1 { font-family: var(--serif); font-weight: 500; font-size: 30px; letter-spacing: -.02em; margin: 0 0 4px; }
+  .gate p { font-size: 13.5px; color: var(--ink-2); margin: 0 0 20px; }
+  .gate input {
+    width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rule);
+    background: var(--paper); outline: none; text-align: center; font-size: 16px; letter-spacing: .04em;
+    transition: border-color .15s, background .15s;
+  }
+  .gate input:focus { border-color: var(--ink); background: var(--card); }
+  .gate button {
+    width: 100%; margin-top: 12px; padding: 14px; border-radius: 12px;
+    background: var(--ink); color: #fff; font-weight: 600; font-size: 15px; transition: opacity .15s;
+  }
+  .gate button:disabled { opacity: .5; }
+  .gate .err { min-height: 18px; font-size: 12.5px; color: var(--debit); margin-top: 10px; }
+
+  @media (min-width: 600px) {
+    .io { gap: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="app" id="app">
+  <div class="top">
+    <div class="brand">
+      <h1>Ledger</h1>
+      <span class="who" id="whoLabel">loading…</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" id="searchToggle" aria-label="Search entries">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </button>
+      <button class="icon-btn" id="openSettings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="month-nav">
+    <button class="step" id="prevMonth" aria-label="Previous month">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="month-label"><b id="monthName">—</b><span id="monthSub"></span></div>
+    <button class="step" id="nextMonth" aria-label="Next month">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">Net this month</div>
+    <span class="net zero num" id="netAmt">—</span>
+    <div class="subnote" id="carryNote"></div>
+    <div class="bar"><i class="in" id="barIn" style="width:0"></i><i class="out" id="barOut" style="width:0"></i></div>
+    <div class="io">
+      <div class="cell in">
+        <div class="lab"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg> Credited</div>
+        <div class="val num" id="inAmt">—</div>
+      </div>
+      <div class="cell out">
+        <div class="lab"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg> Debited</div>
+        <div class="val num" id="outAmt">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+  <div class="search-wrap" id="searchWrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="searchInput" type="text" placeholder="Search notes or categories" />
+  </div>
+
+  <div id="list"></div>
+  <div id="summary"></div>
+</div>
+
+<button class="fab" id="addBtn">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
+  Add entry
+</button>
+
+<!-- Entry sheet -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="entrySheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="grabber"></div>
+  <h2 id="sheetTitle">Add entry</h2>
+  <div class="type-toggle" id="typeToggle">
+    <button data-type="debit" data-on="debit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg> Money out
+    </button>
+    <button data-type="credit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg> Money in
+    </button>
+  </div>
+
+  <div class="field">
+    <label for="amtField">Amount</label>
+    <div class="amount-input">
+      <span class="cur" id="curSign">₹</span>
+      <input id="amtField" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" />
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="noteField">Note</label>
+    <input id="noteField" type="text" placeholder="e.g. Groceries, Salary, Rent" autocomplete="off" />
+  </div>
+
+  <div class="field">
+    <label for="catField">Category</label>
+    <input id="catField" type="text" placeholder="Pick or type a category" autocomplete="off" />
+    <div class="cat-suggest" id="catSuggest"></div>
+  </div>
+
+  <div class="two">
+    <div class="field">
+      <label>Who</label>
+      <div class="who-pick" id="whoPick">
+        <button data-who="A" aria-pressed="true"><span class="dot" id="whoDotA"></span><span id="whoNameA">You</span></button>
+        <button data-who="B" aria-pressed="false"><span class="dot" id="whoDotB"></span><span id="whoNameB">Partner</span></button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <button type="button" class="date-auto" id="dateToggle">
+        <span id="dateSummary">Today</span>
+        <span class="date-edit">Change</span>
+      </button>
+      <input id="dateField" type="date" style="display:none" />
+    </div>
+  </div>
+
+  <div class="sheet-actions">
+    <button class="btn danger" id="deleteEntry" style="display:none" aria-label="Delete entry">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+    </button>
+    <button class="btn primary" id="saveEntry" disabled>Save entry</button>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="grabber"></div>
+  <h2 id="settingsTitle">Settings</h2>
+
+  <div class="seg-title">The two of you</div>
+  <div class="field">
+    <label for="nameA">First person</label>
+    <input id="nameA" type="text" maxlength="20" placeholder="You" />
+    <div class="swatches" id="swatchesA"></div>
+  </div>
+  <div class="field">
+    <label for="nameB">Second person</label>
+    <input id="nameB" type="text" maxlength="20" placeholder="Partner" />
+    <div class="swatches" id="swatchesB"></div>
+  </div>
+
+  <div class="seg-title">Currency</div>
+  <div class="field">
+    <select id="currencySel">
+      <option value="INR">₹  Indian Rupee (INR)</option>
+      <option value="GBP">£  British Pound (GBP)</option>
+      <option value="USD">$  US Dollar (USD)</option>
+      <option value="EUR">€  Euro (EUR)</option>
+      <option value="AED">د.إ  UAE Dirham (AED)</option>
+      <option value="JPY">¥  Japanese Yen (JPY)</option>
+    </select>
+  </div>
+
+  <div class="seg-title">Your data</div>
+  <div class="export-row">
+    <button class="btn ghost" id="exportCsv" style="flex:1">Export CSV</button>
+    <button class="btn ghost" id="exportJson" style="flex:1">Export JSON</button>
+  </div>
+  <button class="link-btn" id="importJson">Import from a JSON backup</button>
+  <input id="importFile" type="file" accept="application/json,.json" style="display:none" />
+  <p class="note-line" id="storageNote"></p>
+
+  <div class="sheet-actions">
+    <button class="btn primary" id="saveSettings">Done</button>
+  </div>
+</div>
+
+<div class="gate show" id="gate">
+  <div class="card">
+    <h1>Ledger</h1>
+    <p>Enter the shared password to open your ledger.</p>
+    <input id="gatePass" type="password" inputmode="text" placeholder="Password" autocomplete="current-password" />
+    <button id="gateBtn">Unlock</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------- Storage
+  // Deployable build: the server (Neon Postgres via /api/ledger) is the source
+  // of truth. localStorage is only an offline cache for instant paint. Access is
+  // gated by a shared password the two of you know; it is checked server-side
+  // and never written into the page source.
+  var API = "/api/ledger";
+  var PASS = null;
+  var KEY_TX = "coupleLedger:tx:v1";
+  var KEY_SETTINGS = "coupleLedger:settings:v1";
+  var KEY_PASS = "coupleLedger:pass:v1";
+
+  var LS = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+
+  function apiGet() {
+    return fetch(API, { headers: { "x-ledger-pass": PASS } }).then(function (r) {
+      if (r.status === 401) { var e = new Error("unauthorized"); e.code = 401; throw e; }
+      if (!r.ok) { var e2 = new Error("server"); e2.code = r.status; throw e2; }
+      return r.json();
+    });
+  }
+  function apiPut(payload) {
+    return fetch(API, {
+      method: "PUT",
+      headers: { "content-type": "application/json", "x-ledger-pass": PASS },
+      body: JSON.stringify(payload)
+    }).then(function (r) { if (!r.ok) { var e = new Error("server"); e.code = r.status; throw e; } return r.json(); });
+  }
+
+  // ---------------------------------------------------------------- State
+  var COLORS = ["#2a7d8c", "#8c5a9e", "#c07b2a", "#3b7a3b", "#b0568a", "#4a5da0"];
+  var DEFAULT_CATS = {
+    debit: ["Groceries", "Rent", "Bills", "Dining", "Transport", "Health", "Shopping", "Kids", "Home", "Other"],
+    credit: ["Salary", "Bonus", "Gift", "Refund", "Interest", "Other"]
+  };
+  var state = {
+    settings: {
+      people: { A: { name: "You", color: COLORS[0] }, B: { name: "Partner", color: COLORS[1] } },
+      currency: "INR",
+      categories: DEFAULT_CATS
+    },
+    tx: [],
+    ui: {
+      month: monthKeyOf(new Date()),
+      filterPerson: "all", // all | A | B
+      filterType: "all",   // all | credit | debit
+      search: "",
+      searchOpen: false,
+      editingId: null,
+      draftType: "debit",
+      draftWho: "A"
+    }
+  };
+
+  var CUR_META = {
+    INR: { sign: "₹", locale: "en-IN" }, GBP: { sign: "£", locale: "en-GB" },
+    USD: { sign: "$", locale: "en-US" }, EUR: { sign: "€", locale: "de-DE" },
+    AED: { sign: "د.إ", locale: "ar-AE" }, JPY: { sign: "¥", locale: "ja-JP" }
+  };
+
+  // ---------------------------------------------------------------- Helpers
+  function monthKeyOf(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+  function money(n, opts) {
+    opts = opts || {};
+    var cur = state.settings.currency;
+    var meta = CUR_META[cur] || CUR_META.INR;
+    var frac = cur === "JPY" ? 0 : 2;
+    try {
+      var s = new Intl.NumberFormat(meta.locale, {
+        style: "currency", currency: cur,
+        minimumFractionDigits: frac, maximumFractionDigits: frac
+      }).format(Math.abs(n));
+      if (opts.signed) s = (n > 0 ? "+ " : n < 0 ? "− " : "") + s;
+      return s;
+    } catch (e) {
+      return meta.sign + Math.abs(n).toFixed(frac);
+    }
+  }
+
+  function txForMonth(mk) {
+    return state.tx.filter(function (t) { return t.date.slice(0, 7) === mk; });
+  }
+  function totals(list) {
+    var inc = 0, out = 0;
+    list.forEach(function (t) { if (t.type === "credit") inc += t.amount; else out += t.amount; });
+    return { in: inc, out: out, net: inc - out };
+  }
+  function cumulativeNet(uptoMonth) {
+    // Running balance carried in from all months on/before the given month.
+    return state.tx.reduce(function (acc, t) {
+      if (t.date.slice(0, 7) <= uptoMonth) acc += (t.type === "credit" ? t.amount : -t.amount);
+      return acc;
+    }, 0);
+  }
+  function personName(k) { return state.settings.people[k].name || (k === "A" ? "You" : "Partner"); }
+  function personColor(k) { return state.settings.people[k].color; }
+
+  function monthMeta(mk) {
+    var parts = mk.split("-"); var y = +parts[0], m = +parts[1] - 1;
+    var d = new Date(y, m, 1);
+    return {
+      name: d.toLocaleDateString("en-GB", { month: "long" }),
+      sub: String(y),
+      full: d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    };
+  }
+  function shiftMonth(mk, delta) {
+    var p = mk.split("-"); var d = new Date(+p[0], +p[1] - 1 + delta, 1);
+    return monthKeyOf(d);
+  }
+
+  // ---------------------------------------------------------------- Render
+  function render() {
+    var s = state.settings, ui = state.ui;
+    document.getElementById("whoLabel").textContent = personName("A") + " · " + personName("B");
+
+    var mm = monthMeta(ui.month);
+    document.getElementById("monthName").textContent = mm.name;
+    document.getElementById("monthSub").textContent = mm.sub;
+    var thisKey = monthKeyOf(new Date());
+    document.getElementById("nextMonth").disabled = ui.month >= thisKey ? false : false; // allow future; kept enabled
+
+    var list = txForMonth(ui.month);
+    var t = totals(list);
+
+    // Hero
+    var netEl = document.getElementById("netAmt");
+    netEl.className = "net num " + (t.net > 0 ? "pos" : t.net < 0 ? "neg" : "zero");
+    animateNumber(netEl, t.net, { signed: true });
+    document.getElementById("inAmt").textContent = money(t.in);
+    document.getElementById("outAmt").textContent = money(t.out);
+
+    var denom = t.in + t.out;
+    document.getElementById("barIn").style.width = denom ? (t.in / denom * 100) + "%" : "0";
+    document.getElementById("barOut").style.width = denom ? (t.out / denom * 100) + "%" : "0";
+
+    var carry = cumulativeNet(ui.month);
+    document.getElementById("carryNote").innerHTML =
+      "Balance carried to date · <b>" + esc(money(carry, { signed: true })) + "</b>";
+
+    renderFilters();
+    renderList(list);
+    renderSummary(list, t);
+    updateWhoLabels();
+  }
+
+  function renderFilters() {
+    var ui = state.ui;
+    var f = [
+      { key: "person:all", label: "Everyone", on: ui.filterPerson === "all" && ui.filterType === "all" },
+      { key: "person:A", label: personName("A"), color: personColor("A"), on: ui.filterPerson === "A" },
+      { key: "person:B", label: personName("B"), color: personColor("B"), on: ui.filterPerson === "B" },
+      { key: "type:credit", label: "In only", on: ui.filterType === "credit" },
+      { key: "type:debit", label: "Out only", on: ui.filterType === "debit" }
+    ];
+    var html = f.map(function (c) {
+      var dot = c.color ? '<span class="dot" style="background:' + c.color + '"></span>' : "";
+      return '<button class="chip" data-filter="' + c.key + '" aria-pressed="' + (c.on ? "true" : "false") + '">' + dot + esc(c.label) + "</button>";
+    }).join("");
+    document.getElementById("filters").innerHTML = html;
+  }
+
+  function applyFilters(list) {
+    var ui = state.ui;
+    return list.filter(function (tx) {
+      if (ui.filterPerson !== "all" && tx.person !== ui.filterPerson) return false;
+      if (ui.filterType !== "all" && tx.type !== ui.filterType) return false;
+      if (ui.search) {
+        var q = ui.search.toLowerCase();
+        if ((tx.note || "").toLowerCase().indexOf(q) === -1 && (tx.category || "").toLowerCase().indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderList(monthList) {
+    var el = document.getElementById("list");
+    var filtered = applyFilters(monthList).slice().sort(function (a, b) {
+      return a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : (a.date < b.date ? 1 : -1);
+    });
+
+    if (!filtered.length) {
+      var msg = monthList.length
+        ? "No entries match this filter. Try Everyone, or clear the search."
+        : "Nothing logged for " + monthMeta(state.ui.month).name + " yet. Tap Add entry to record what came in or went out.";
+      el.innerHTML = '<div class="empty"><div class="big">A clean page</div><p>' + esc(msg) + "</p></div>";
+      return;
+    }
+
+    // group by date
+    var groups = {}; var order = [];
+    filtered.forEach(function (tx) { if (!groups[tx.date]) { groups[tx.date] = []; order.push(tx.date); } groups[tx.date].push(tx); });
+
+    var html = order.map(function (date) {
+      var rows = groups[date];
+      var dayNet = rows.reduce(function (a, r) { return a + (r.type === "credit" ? r.amount : -r.amount); }, 0);
+      var d = new Date(date + "T00:00:00");
+      var dLabel = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+      var netCls = dayNet > 0 ? "pos" : dayNet < 0 ? "neg" : "";
+      var head = '<div class="day-head"><span class="d">' + esc(dLabel) + '</span>' +
+        '<span class="t ' + netCls + ' num">' + esc(money(dayNet, { signed: true })) + "</span></div>";
+      var body = rows.map(function (tx) {
+        var pc = personColor(tx.person);
+        var initial = (personName(tx.person)[0] || "?").toUpperCase();
+        var sign = tx.type === "credit" ? "+ " : "− ";
+        return '<button class="row" data-edit="' + tx.id + '">' +
+          '<span class="badge" style="color:' + pc + '">' + esc(initial) + "</span>" +
+          '<span class="mid"><span class="note">' + esc(tx.note || tx.category || "Untitled") + "</span>" +
+          '<span class="meta">' +
+          (tx.category ? "<span>" + esc(tx.category) + "</span><span>·</span>" : "") +
+          '<span class="p"><span class="dot" style="background:' + pc + '"></span>' + esc(personName(tx.person)) + "</span></span></span>" +
+          '<span class="amt ' + tx.type + ' num">' + sign + money(tx.amount) + "</span></button>";
+      }).join("");
+      return '<div class="day-group">' + head + '<div class="rows">' + body + "</div></div>";
+    }).join("");
+
+    el.innerHTML = html;
+  }
+
+  function renderSummary(monthList, t) {
+    var el = document.getElementById("summary");
+    if (!monthList.length) { el.innerHTML = ""; return; }
+
+    // Per-person: credited (contributed) vs debited (spent)
+    function perPerson(k) {
+      var inc = 0, out = 0;
+      monthList.forEach(function (tx) { if (tx.person === k) { if (tx.type === "credit") inc += tx.amount; else out += tx.amount; } });
+      return { in: inc, out: out };
+    }
+    var A = perPerson("A"), B = perPerson("B");
+
+    // Settlement: assume shared pot. Each "should" cover half of total spend.
+    // Contribution = money each brought in; fair share of spend = totalOut / 2.
+    var totalOut = t.out;
+    var aBalance = A.in - totalOut / 2;   // positive => A is ahead (put in more than their share of spending)
+    var bBalance = B.in - totalOut / 2;
+    var settleTxt;
+    var diff = Math.abs(aBalance - bBalance) / 2;
+    if (totalOut === 0 && A.in === 0 && B.in === 0) settleTxt = "";
+    else if (diff < 0.01) settleTxt = "You're square this month — contributions balance out against shared spending.";
+    else if (aBalance > bBalance) settleTxt = "<b>" + esc(personName("B")) + "</b> owes <b>" + esc(personName("A")) + "</b> " + esc(money(diff)) + " to even up this month's shared spending.";
+    else settleTxt = "<b>" + esc(personName("A")) + "</b> owes <b>" + esc(personName("B")) + "</b> " + esc(money(diff)) + " to even up this month's shared spending.";
+
+    var line = function (k, v) {
+      return '<div class="person-line"><div class="nm"><span class="dot" style="background:' + personColor(k) + '"></span><span>' + esc(personName(k)) + '</span></div>' +
+        '<div class="cols"><div><div class="k">In</div><div class="v num" style="color:var(--credit)">' + esc(money(v.in)) + '</div></div>' +
+        '<div><div class="k">Out</div><div class="v num" style="color:var(--debit)">' + esc(money(v.out)) + "</div></div></div></div>";
+    };
+
+    // Category breakdown (debits this month)
+    var cats = {};
+    monthList.forEach(function (tx) { if (tx.type === "debit") { var c = tx.category || "Other"; cats[c] = (cats[c] || 0) + tx.amount; } });
+    var catArr = Object.keys(cats).map(function (k) { return { name: k, val: cats[k] }; }).sort(function (a, b) { return b.val - a.val; }).slice(0, 5);
+    var maxCat = catArr.length ? catArr[0].val : 0;
+    var catHtml = catArr.length ? ('<div class="summary cat-break"><h3>Where it went — top categories</h3>' +
+      catArr.map(function (c) {
+        return '<div class="cat-line"><span class="cn">' + esc(c.name) + '</span>' +
+          '<span class="track"><i style="width:' + (maxCat ? (c.val / maxCat * 100) : 0) + '%"></i></span>' +
+          '<span class="cv num">' + esc(money(c.val)) + "</span></div>";
+      }).join("") + "</div>") : "";
+
+    el.innerHTML =
+      '<div class="summary"><h3>Who put in what</h3>' + line("A", A) + line("B", B) +
+      (settleTxt ? '<div class="settle">' + settleTxt + "</div>" : "") + "</div>" +
+      catHtml;
+  }
+
+  // count-up tween on the hero net figure
+  var _lastNet = 0;
+  function animateNumber(el, target, opts) {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || Math.abs(target - _lastNet) < 0.5) { el.textContent = money(target, opts); _lastNet = target; return; }
+    var from = _lastNet, start = null, dur = 420;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = money(from + (target - from) * eased, opts);
+      if (p < 1) requestAnimationFrame(step); else { el.textContent = money(target, opts); _lastNet = target; }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ---------------------------------------------------------------- Entry sheet
+  function openSheet(editId) {
+    var ui = state.ui;
+    ui.editingId = editId || null;
+    var editing = editId ? state.tx.find(function (t) { return t.id === editId; }) : null;
+
+    document.getElementById("sheetTitle").textContent = editing ? "Edit entry" : "Add entry";
+    document.getElementById("deleteEntry").style.display = editing ? "flex" : "none";
+
+    ui.draftType = editing ? editing.type : "debit";
+    ui.draftWho = editing ? editing.person : "A";
+    document.getElementById("amtField").value = editing ? editing.amount : "";
+    document.getElementById("noteField").value = editing ? (editing.note || "") : "";
+    document.getElementById("catField").value = editing ? (editing.category || "") : "";
+    document.getElementById("dateField").value = editing ? editing.date : todayISO();
+    updateDateUI();
+
+    syncTypeToggle();
+    syncWhoPick();
+    renderCatSuggest();
+    validateEntry();
+
+    document.getElementById("curSign").textContent = (CUR_META[state.settings.currency] || CUR_META.INR).sign;
+    showSheet("entrySheet");
+    setTimeout(function () { document.getElementById("amtField").focus(); }, 320);
+  }
+
+  function syncTypeToggle() {
+    var buttons = document.querySelectorAll("#typeToggle button");
+    buttons.forEach(function (b) {
+      var on = b.getAttribute("data-type") === state.ui.draftType;
+      if (on) b.setAttribute("data-on", state.ui.draftType); else b.removeAttribute("data-on");
+    });
+    renderCatSuggest();
+  }
+  function syncWhoPick() {
+    document.querySelectorAll("#whoPick button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-who") === state.ui.draftWho ? "true" : "false");
+    });
+  }
+  function renderCatSuggest() {
+    var cats = state.settings.categories[state.ui.draftType] || [];
+    document.getElementById("catSuggest").innerHTML = cats.slice(0, 8).map(function (c) {
+      return '<button type="button" data-cat="' + esc(c) + '">' + esc(c) + "</button>";
+    }).join("");
+  }
+  function validateEntry() {
+    var amt = parseFloat(document.getElementById("amtField").value);
+    document.getElementById("saveEntry").disabled = !(amt > 0);
+  }
+
+  function dateLabel(iso) {
+    if (iso === todayISO()) return "Today";
+    var d = new Date(iso + "T00:00:00");
+    var y = new Date(); y.setDate(y.getDate() - 1);
+    var yIso = y.getFullYear() + "-" + String(y.getMonth() + 1).padStart(2, "0") + "-" + String(y.getDate()).padStart(2, "0");
+    if (iso === yIso) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  }
+  function updateDateUI() {
+    var field = document.getElementById("dateField");
+    field.classList.remove("revealed"); field.style.display = "none";
+    var toggle = document.getElementById("dateToggle");
+    toggle.style.display = "flex";
+    document.getElementById("dateSummary").textContent = dateLabel(field.value || todayISO());
+  }
+
+  function saveEntry() {
+    var amt = parseFloat(document.getElementById("amtField").value);
+    if (!(amt > 0)) return;
+    var note = document.getElementById("noteField").value.trim();
+    var cat = document.getElementById("catField").value.trim();
+    var date = document.getElementById("dateField").value || todayISO();
+    var ui = state.ui;
+
+    // remember novel categories for future suggestions
+    if (cat) {
+      var pool = state.settings.categories[ui.draftType];
+      if (pool.map(function (c) { return c.toLowerCase(); }).indexOf(cat.toLowerCase()) === -1) {
+        pool.unshift(cat); state.settings.categories[ui.draftType] = pool.slice(0, 24);
+        persistSettings();
+      }
+    }
+
+    if (ui.editingId) {
+      var t = state.tx.find(function (x) { return x.id === ui.editingId; });
+      if (t) { t.type = ui.draftType; t.amount = amt; t.note = note; t.category = cat; t.person = ui.draftWho; t.date = date; t.updatedAt = Date.now(); }
+      toast("Entry updated");
+    } else {
+      state.tx.push({ id: uid(), type: ui.draftType, amount: amt, note: note, category: cat, person: ui.draftWho, date: date, createdAt: Date.now(), updatedAt: Date.now() });
+      toast(ui.draftType === "credit" ? "Money in, logged" : "Money out, logged");
+    }
+    // jump the view to the entry's month so it's visible
+    ui.month = date.slice(0, 7);
+    persistTx();
+    closeSheets();
+    render();
+  }
+
+  function deleteEntry() {
+    if (!state.ui.editingId) return;
+    if (!confirm("Delete this entry? This can't be undone.")) return;
+    state.tx = state.tx.filter(function (t) { return t.id !== state.ui.editingId; });
+    persistTx();
+    closeSheets();
+    render();
+    toast("Entry deleted");
+  }
+
+  // ---------------------------------------------------------------- Settings sheet
+  function openSettings() {
+    var s = state.settings;
+    document.getElementById("nameA").value = s.people.A.name;
+    document.getElementById("nameB").value = s.people.B.name;
+    document.getElementById("currencySel").value = s.currency;
+    renderSwatches("swatchesA", "A");
+    renderSwatches("swatchesB", "B");
+    document.getElementById("storageNote").textContent =
+      "Synced to your private database and cached on this device, so it works offline and stays in step across both phones. Export a JSON backup any time.";
+    showSheet("settingsSheet");
+  }
+  function renderSwatches(elId, k) {
+    document.getElementById(elId).innerHTML = COLORS.map(function (c) {
+      var on = state.settings.people[k].color === c;
+      return '<button class="swatch" data-color-for="' + k + '" data-color="' + c + '" style="background:' + c + '" aria-pressed="' + (on ? "true" : "false") + '" aria-label="Colour ' + c + '"></button>';
+    }).join("");
+  }
+  function saveSettingsFromForm() {
+    var s = state.settings;
+    s.people.A.name = document.getElementById("nameA").value.trim() || "You";
+    s.people.B.name = document.getElementById("nameB").value.trim() || "Partner";
+    s.currency = document.getElementById("currencySel").value;
+    persistSettings();
+    closeSheets();
+    render();
+  }
+  function updateWhoLabels() {
+    document.getElementById("whoNameA").textContent = personName("A");
+    document.getElementById("whoNameB").textContent = personName("B");
+    document.getElementById("whoDotA").style.background = personColor("A");
+    document.getElementById("whoDotB").style.background = personColor("B");
+  }
+
+  // ---------------------------------------------------------------- Export / import
+  function download(name, text, type) {
+    var blob = new Blob([text], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a"); a.href = url; a.download = name; a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+  }
+  function exportCsv() {
+    var rows = [["date", "type", "amount", "note", "category", "person"]];
+    state.tx.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (t) {
+      rows.push([t.date, t.type, t.amount, csvCell(t.note), csvCell(t.category), csvCell(personName(t.person))]);
+    });
+    download("couple-ledger.csv", rows.map(function (r) { return r.join(","); }).join("\n"), "text/csv");
+    toast("CSV exported");
+  }
+  function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function exportJson() {
+    download("couple-ledger-backup.json", JSON.stringify({ settings: state.settings, tx: state.tx, exportedAt: new Date().toISOString() }, null, 2), "application/json");
+    toast("JSON backup exported");
+  }
+  function importJson(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!Array.isArray(data.tx)) throw new Error("no transactions");
+        if (!confirm("Import " + data.tx.length + " entries? This replaces your current ledger.")) return;
+        state.tx = data.tx;
+        if (data.settings) state.settings = Object.assign(state.settings, data.settings);
+        persistTx(); persistSettings();
+        closeSheets(); render();
+        toast("Backup imported");
+      } catch (e) { toast("That file couldn't be read"); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------------------------------------------------------------- Persistence (cache + server sync)
+  function cacheNow() {
+    LS.set(KEY_TX, JSON.stringify(state.tx));
+    LS.set(KEY_SETTINGS, JSON.stringify(state.settings));
+  }
+  var _syncTimer, _offline = false;
+  function syncUp() {
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(function () {
+      apiPut({ tx: state.tx, settings: state.settings }).then(function () {
+        if (_offline) { _offline = false; toast("Back online — synced"); }
+      }).catch(function (err) {
+        if (err && err.code === 401) { showGate("Session expired — enter the password again"); return; }
+        _offline = true; toast("Offline — saved on this device");
+      });
+    }, 350);
+  }
+  function persistTx() { cacheNow(); syncUp(); }
+  function persistSettings() { cacheNow(); syncUp(); }
+
+  function hydrateFromCache() {
+    var rawSet = LS.get(KEY_SETTINGS);
+    if (rawSet) { try { var s = JSON.parse(rawSet); state.settings = Object.assign(state.settings, s); if (!s.categories) state.settings.categories = DEFAULT_CATS; } catch (e) {} }
+    var rawTx = LS.get(KEY_TX);
+    if (rawTx) { try { var arr = JSON.parse(rawTx); if (Array.isArray(arr)) state.tx = arr; } catch (e) {} }
+  }
+
+  async function load() {
+    hydrateFromCache();
+    render(); // instant paint from the local cache
+    try {
+      var data = await apiGet();
+      var serverTx = data && Array.isArray(data.tx) ? data.tx : null;
+      var serverSet = data && data.settings ? data.settings : null;
+      var haveServerData = (serverTx && serverTx.length) || serverSet;
+      if (haveServerData) {
+        if (serverTx) state.tx = serverTx;
+        if (serverSet) { state.settings = Object.assign(state.settings, serverSet); if (!serverSet.categories) state.settings.categories = DEFAULT_CATS; }
+        cacheNow();
+        render();
+      } else if (state.tx.length) {
+        // server is empty but this device has entries — seed the server
+        syncUp();
+      }
+    } catch (err) {
+      if (err && err.code === 401) { showGate("That password didn't match — try again"); return; }
+      _offline = true; // no server reach: keep working from the cache
+    }
+  }
+
+  // ---------------------------------------------------------------- Sheets util
+  function showSheet(id) {
+    document.getElementById("scrim").classList.add("open");
+    document.getElementById(id).classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+  function closeSheets() {
+    document.getElementById("scrim").classList.remove("open");
+    document.getElementById("entrySheet").classList.remove("open");
+    document.getElementById("settingsSheet").classList.remove("open");
+    document.body.style.overflow = "";
+    state.ui.editingId = null;
+  }
+
+  var _toastTimer;
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg; el.classList.add("show");
+    clearTimeout(_toastTimer); _toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2000);
+  }
+
+  // ---------------------------------------------------------------- Events
+  document.getElementById("prevMonth").addEventListener("click", function () { state.ui.month = shiftMonth(state.ui.month, -1); render(); });
+  document.getElementById("nextMonth").addEventListener("click", function () { state.ui.month = shiftMonth(state.ui.month, 1); render(); });
+
+  document.getElementById("addBtn").addEventListener("click", function () { openSheet(null); });
+  document.getElementById("openSettings").addEventListener("click", openSettings);
+  document.getElementById("scrim").addEventListener("click", closeSheets);
+
+  document.getElementById("searchToggle").addEventListener("click", function () {
+    state.ui.searchOpen = !state.ui.searchOpen;
+    var w = document.getElementById("searchWrap");
+    w.classList.toggle("open", state.ui.searchOpen);
+    if (state.ui.searchOpen) document.getElementById("searchInput").focus();
+    else { state.ui.search = ""; document.getElementById("searchInput").value = ""; render(); }
+  });
+  document.getElementById("searchInput").addEventListener("input", function (e) { state.ui.search = e.target.value; render(); });
+
+  // filter chips (delegated)
+  document.getElementById("filters").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-filter]"); if (!btn) return;
+    var f = btn.getAttribute("data-filter").split(":");
+    if (f[0] === "person") { state.ui.filterPerson = f[1]; if (f[1] === "all") state.ui.filterType = "all"; }
+    if (f[0] === "type") { state.ui.filterType = (state.ui.filterType === f[1] ? "all" : f[1]); }
+    render();
+  });
+
+  // list rows -> edit (delegated)
+  document.getElementById("list").addEventListener("click", function (e) {
+    var row = e.target.closest("[data-edit]"); if (!row) return;
+    openSheet(row.getAttribute("data-edit"));
+  });
+
+  // entry sheet controls
+  document.getElementById("typeToggle").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.ui.draftType = b.getAttribute("data-type"); syncTypeToggle();
+  });
+  document.getElementById("whoPick").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.ui.draftWho = b.getAttribute("data-who"); syncWhoPick();
+  });
+  document.getElementById("catSuggest").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cat]"); if (!b) return;
+    document.getElementById("catField").value = b.getAttribute("data-cat");
+  });
+  document.getElementById("amtField").addEventListener("input", validateEntry);
+  document.getElementById("dateToggle").addEventListener("click", function () {
+    var field = document.getElementById("dateField");
+    document.getElementById("dateToggle").style.display = "none";
+    field.style.display = "block"; field.classList.add("revealed");
+    field.focus();
+    if (typeof field.showPicker === "function") { try { field.showPicker(); } catch (e) {} }
+  });
+  document.getElementById("dateField").addEventListener("change", updateDateUI);
+  document.getElementById("dateField").addEventListener("blur", updateDateUI);
+  document.getElementById("saveEntry").addEventListener("click", saveEntry);
+  document.getElementById("deleteEntry").addEventListener("click", deleteEntry);
+
+  // settings
+  document.getElementById("saveSettings").addEventListener("click", saveSettingsFromForm);
+  document.getElementById("currencySel").addEventListener("change", function () {
+    state.settings.currency = document.getElementById("currencySel").value;
+  });
+  ["swatchesA", "swatchesB"].forEach(function (id) {
+    document.getElementById(id).addEventListener("click", function (e) {
+      var sw = e.target.closest("[data-color]"); if (!sw) return;
+      var k = sw.getAttribute("data-color-for");
+      state.settings.people[k].color = sw.getAttribute("data-color");
+      renderSwatches(id, k);
+    });
+  });
+  document.getElementById("exportCsv").addEventListener("click", exportCsv);
+  document.getElementById("exportJson").addEventListener("click", exportJson);
+  document.getElementById("importJson").addEventListener("click", function () { document.getElementById("importFile").click(); });
+  document.getElementById("importFile").addEventListener("change", function (e) { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ""; });
+
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheets(); });
+
+  // ---------------------------------------------------------------- Auth gate + init
+  var gate = document.getElementById("gate");
+  var gateInput = document.getElementById("gatePass");
+  var gateErr = document.getElementById("gateErr");
+  var gateBtn = document.getElementById("gateBtn");
+
+  function showGate(msg) {
+    PASS = null; LS.del(KEY_PASS);
+    gateErr.textContent = msg || "";
+    gate.classList.add("show");
+    setTimeout(function () { gateInput.focus(); }, 60);
+  }
+  function hideGate() { gate.classList.remove("show"); gateInput.value = ""; }
+
+  function tryUnlock(candidate) {
+    if (!candidate) return;
+    gateBtn.disabled = true; gateErr.textContent = "Checking\u2026";
+    PASS = candidate;
+    apiGet().then(function () {
+      LS.set(KEY_PASS, candidate); hideGate();
+      gateBtn.disabled = false; gateErr.textContent = "";
+      load();
+    }).catch(function (err) {
+      gateBtn.disabled = false; PASS = null;
+      if (err && err.code === 401) showGate("Wrong password \u2014 try again");
+      else gateErr.textContent = "Can't reach the server. Check your connection and retry.";
+    });
+  }
+  gateBtn.addEventListener("click", function () { tryUnlock(gateInput.value.trim()); });
+  gateInput.addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(gateInput.value.trim()); });
+
+  var savedPass = LS.get(KEY_PASS);
+  if (savedPass) { PASS = savedPass; hideGate(); load(); }
+  else { hydrateFromCache(); render(); showGate(""); }
+})();
+</script>
