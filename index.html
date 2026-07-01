@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <!--
   Couple Ledger — a shared, mobile-first household expense tracker.
   Deployable build: single static page backed by a Neon Postgres database
@@ -41,7 +43,11 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: clip; /* stop stray horizontal scroll; clip (not hidden) keeps sticky headers working */
   }
+  /* Any flex/grid child holding variable-length user text must be allowed to shrink,
+     otherwise a long name/category forces the whole layout wider than the viewport. */
+  .two > *, .io > *, .who-pick > *, .type-toggle > * { min-width: 0; }
   .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
   input, select { font-family: inherit; font-size: 16px; color: var(--ink); }
@@ -174,7 +180,7 @@
   }
   .row .mid { min-width: 0; flex: 1; }
   .row .mid .note { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .mid .meta { font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; margin-top: 1px; }
+  .row .mid .meta { font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; margin-top: 1px; flex-wrap: wrap; }
   .row .mid .meta .p { display: inline-flex; align-items: center; gap: 4px; }
   .row .amt { font-family: var(--serif); font-size: 16.5px; font-weight: 500; letter-spacing: -.01em; flex: none; }
   .row .amt.credit { color: var(--credit); }
@@ -267,6 +273,7 @@
     color: var(--ink-2); transition: all .15s;
   }
   .who-pick button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--paper); }
+  .who-pick button span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .cat-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
   .cat-suggest button {
@@ -338,9 +345,155 @@
   }
   .gate button:disabled { opacity: .5; }
   .gate .err { min-height: 18px; font-size: 12.5px; color: var(--debit); margin-top: 10px; }
+  .gbtn {
+    width: 100%; margin-top: 8px; padding: 13px 16px; border-radius: 12px;
+    background: var(--card); color: var(--ink); border: 1px solid var(--rule-strong);
+    font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: background .15s, transform .12s;
+  }
+  .gbtn:active { transform: scale(.98); background: var(--paper); }
+  .gbtn:disabled { opacity: .5; }
+  .gbtn svg { flex: none; }
+  .acct { display: flex; align-items: center; gap: 11px; padding: 4px 2px 2px; }
+  .acct .av { width: 38px; height: 38px; border-radius: 99px; background: var(--paper); border: 1px solid var(--rule); object-fit: cover; flex: none; display: grid; place-items: center; font-weight: 600; color: var(--ink-2); }
+  .acct .who2 { min-width: 0; }
+  .acct .who2 .nm2 { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acct .who2 .em2 { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .share-box { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; margin-top: 8px; }
+  .share-box .code { font-family: var(--serif); font-size: 24px; letter-spacing: .12em; font-weight: 500; }
+  .share-box .cap { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .share-box .st { font-size: 12px; color: var(--credit); font-weight: 600; margin-top: 6px; }
+
+  /* ---------- View tabs ---------- */
+  .tabs {
+    display: flex; gap: 6px; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 14px; padding: 5px; margin: 8px 0 12px; box-shadow: var(--shadow);
+  }
+  .tabs button {
+    flex: 1; min-width: 0; padding: 10px; border-radius: 10px; font-weight: 600; font-size: 14px;
+    color: var(--ink-2); display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: background .15s, color .15s;
+  }
+  .tabs button svg { width: 17px; height: 17px; flex: none; }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
+
+  /* ---------- Life events ---------- */
+  .events-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 12px; gap: 10px; }
+  .events-head .lead { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -.01em; }
+  .events-head button {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+    color: #fff; background: var(--ink); padding: 9px 14px; border-radius: 99px; transition: transform .12s;
+  }
+  .events-head button:active { transform: scale(.97); }
+  .events-head button svg { width: 15px; height: 15px; }
+  .events { display: flex; flex-direction: column; gap: 10px; }
+  .event-card {
+    background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 15px 16px; width: 100%; text-align: left;
+    display: flex; gap: 13px; align-items: flex-start; transition: background .12s;
+  }
+  .event-card:active { background: var(--paper); }
+  .event-card .emoji {
+    font-size: 21px; line-height: 1; flex: none; width: 42px; height: 42px; border-radius: 12px;
+    background: var(--paper); border: 1px solid var(--rule); display: grid; place-items: center;
+  }
+  .event-card .body { min-width: 0; flex: 1; }
+  .event-card .body .ttl { font-family: var(--serif); font-weight: 500; font-size: 17px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .event-card .body .when { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .event-card .body .desc { font-size: 13.5px; color: var(--ink-2); margin-top: 8px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  /* ---------- Textarea + emoji picker (event sheet) ---------- */
+  .field textarea {
+    width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--rule);
+    background: var(--paper); outline: none; resize: vertical; min-height: 96px;
+    font-family: inherit; font-size: 16px; line-height: 1.5; color: var(--ink);
+    transition: border-color .15s, background .15s;
+  }
+  .field textarea:focus { border-color: var(--ink); background: var(--card); }
+  .emoji-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .emoji-pick button {
+    width: 42px; height: 42px; border-radius: 11px; border: 1px solid var(--rule);
+    background: var(--card); font-size: 20px; line-height: 1; transition: transform .12s, border-color .12s, background .12s;
+  }
+  .emoji-pick button:active { transform: scale(.94); }
+  .emoji-pick button[aria-pressed="true"] { border-color: var(--ink); background: var(--paper); }
+
+  /* ---------- Category editor (settings) ---------- */
+  .cat-type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .cat-type-toggle button {
+    padding: 10px; border-radius: 11px; border: 1.5px solid var(--rule); background: var(--card);
+    font-weight: 600; font-size: 13.5px; color: var(--ink-2); transition: all .15s;
+  }
+  .cat-type-toggle button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--paper); }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+  .cat-chips:empty::after { content: "No categories yet — add one below."; font-size: 12.5px; color: var(--ink-3); }
+  .cat-chip {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 8px 7px 12px; border-radius: 99px;
+    border: 1px solid var(--rule); background: var(--card); font-size: 13px; color: var(--ink); max-width: 100%;
+  }
+  .cat-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .cat-chip button {
+    width: 20px; height: 20px; border-radius: 99px; flex: none; display: grid; place-items: center;
+    color: var(--ink-3); background: var(--paper); transition: background .12s, color .12s;
+  }
+  .cat-chip button:hover { background: var(--debit-soft); color: var(--debit); }
+  .cat-chip button svg { width: 12px; height: 12px; }
+  .cat-add { display: flex; gap: 8px; }
+  .cat-add input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--rule); background: var(--paper); outline: none; }
+  .cat-add input:focus { border-color: var(--ink); background: var(--card); }
+  .cat-add button { flex: none; padding: 0 18px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 600; font-size: 14px; }
+  .cat-add button:disabled { opacity: .4; }
+
+  /* ---------- Statement importer ---------- */
+  .imp-note { font-size: 13px; color: var(--ink-2); line-height: 1.55; margin: 0 2px 14px; }
+  .imp-note b { color: var(--ink); font-weight: 600; }
+  .imp-drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 26px 18px; border: 1.5px dashed var(--rule-strong); border-radius: 14px;
+    background: var(--paper); color: var(--ink-2); text-align: center; font-size: 14px; font-weight: 500;
+    transition: border-color .15s, background .15s;
+  }
+  .imp-drop:active { border-color: var(--ink); background: var(--card); }
+  .imp-drop svg { width: 26px; height: 26px; color: var(--ink-3); }
+  .imp-status { font-size: 12.5px; color: var(--ink-3); margin: 12px 2px 0; line-height: 1.5; }
+  .imp-status.err { color: var(--debit); }
+  .imp-map { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-bottom: 14px; }
+  .imp-map .field { margin-bottom: 0; }
+  .imp-map label { font-size: 11px; }
+  .imp-map select { padding: 10px 12px !important; font-size: 14px; }
+  .imp-batch { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .imp-review-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 8px; font-size: 12.5px; color: var(--ink-3); }
+  .imp-review { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; padding: 2px; }
+  .imp-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--rule);
+    border-radius: 12px; background: var(--card); transition: opacity .12s;
+  }
+  .imp-row.off { opacity: .4; }
+  .imp-row.dup { border-color: var(--debit-soft); }
+  .imp-row input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--ink); }
+  .imp-row .rmid { min-width: 0; flex: 1; }
+  .imp-row .rmid .rn { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .imp-row .rmid .rd { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .imp-row .rmid .rd .dupflag { color: var(--debit); font-weight: 600; }
+  .imp-row .rtype {
+    flex: none; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 7px; border: none;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .imp-row .rtype.credit { background: var(--credit-soft); color: var(--credit); }
+  .imp-row .rtype.debit { background: var(--debit-soft); color: var(--debit); }
+  .imp-row .ramt { flex: none; font-family: var(--serif); font-size: 15px; font-weight: 500; }
+  .imp-row .ramt.credit { color: var(--credit); }
+  .imp-row .ramt.debit { color: var(--debit); }
 
   @media (min-width: 600px) {
     .io { gap: 12px; }
+    .app { max-width: 600px; }
+  }
+  @media (max-width: 360px) {
+    .app { padding: 0 12px 120px; }
+    .person-line .cols { gap: 10px; }
+    .person-line .cols .v { font-size: 11.5px; }
+    .type-toggle button, .who-pick button { font-size: 13px; }
   }
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
@@ -363,6 +516,16 @@
     </div>
   </div>
 
+  <div class="tabs" id="tabs">
+    <button data-view="ledger" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Ledger
+    </button>
+    <button data-view="events" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 6.9H21l-5.3 4 2 6.9L12 16.8 6.3 19.8l2-6.9L3 8.9h6.6z"/></svg> Life events
+    </button>
+  </div>
+
+  <div id="ledgerView">
   <div class="month-nav">
     <button class="step" id="prevMonth" aria-label="Previous month">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
@@ -398,11 +561,22 @@
 
   <div id="list"></div>
   <div id="summary"></div>
+  </div><!-- /#ledgerView -->
+
+  <div id="eventsView" hidden>
+    <div class="events-head">
+      <span class="lead">Life events</span>
+      <button id="addEventTop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg> Add
+      </button>
+    </div>
+    <div class="events" id="events"></div>
+  </div>
 </div>
 
 <button class="fab" id="addBtn">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
-  Add entry
+  <span id="fabLabel">Add entry</span>
 </button>
 
 <!-- Entry sheet -->
@@ -469,6 +643,35 @@
   <div class="grabber"></div>
   <h2 id="settingsTitle">Settings</h2>
 
+  <div class="seg-title">Account</div>
+  <div class="acct">
+    <div class="av" id="acctAv">–</div>
+    <div class="who2">
+      <div class="nm2" id="acctName">—</div>
+      <div class="em2" id="acctEmail"></div>
+    </div>
+  </div>
+  <div class="share-box">
+    <div class="code" id="acctCode">——</div>
+    <div class="cap">Your household code. Share it with your partner so they can join this ledger.</div>
+    <div class="st" id="acctShared" style="display:none">Shared — 2 people in this ledger.</div>
+    <div class="export-row" style="margin-top:10px">
+      <button class="btn ghost" id="copyCode" style="flex:1">Copy code</button>
+      <button class="btn ghost" id="leaveSpace" style="flex:1; display:none">Leave shared ledger</button>
+    </div>
+  </div>
+  <div class="field" style="margin-top:12px">
+    <label for="joinCode">Join your partner's ledger</label>
+    <div class="cat-add">
+      <input id="joinCode" type="text" maxlength="12" placeholder="Enter their household code" autocomplete="off" style="text-transform:uppercase" />
+      <button id="joinBtn" disabled>Join</button>
+    </div>
+    <p class="note-line" id="joinNote" style="margin-top:8px"></p>
+  </div>
+  <div class="export-row" style="margin-top:6px">
+    <button class="btn ghost" id="signOutBtn" style="flex:1">Sign out</button>
+  </div>
+
   <div class="seg-title">The two of you</div>
   <div class="field">
     <label for="nameA">First person</label>
@@ -493,6 +696,17 @@
     </select>
   </div>
 
+  <div class="seg-title">Categories</div>
+  <div class="cat-type-toggle" id="catTypeToggle">
+    <button data-cat-type="debit" aria-pressed="true">Money out</button>
+    <button data-cat-type="credit" aria-pressed="false">Money in</button>
+  </div>
+  <div class="cat-chips" id="catChips"></div>
+  <div class="cat-add">
+    <input id="newCatInput" type="text" maxlength="24" placeholder="New category name" autocomplete="off" />
+    <button id="addCatBtn" disabled>Add</button>
+  </div>
+
   <div class="seg-title">Your data</div>
   <div class="export-row">
     <button class="btn ghost" id="exportCsv" style="flex:1">Export CSV</button>
@@ -500,6 +714,9 @@
   </div>
   <button class="link-btn" id="importJson">Import from a JSON backup</button>
   <input id="importFile" type="file" accept="application/json,.json" style="display:none" />
+  <div class="export-row" style="margin-top:10px">
+    <button class="btn ghost" id="openImport" style="flex:1">Import bank / UPI statement (CSV or PDF)</button>
+  </div>
   <p class="note-line" id="storageNote"></p>
 
   <div class="sheet-actions">
@@ -507,17 +724,160 @@
   </div>
 </div>
 
+<!-- Life event sheet -->
+<div class="sheet" id="eventSheet" role="dialog" aria-modal="true" aria-labelledby="eventTitle">
+  <div class="grabber"></div>
+  <h2 id="eventTitle">Add life event</h2>
+
+  <div class="field">
+    <label for="evtTitle">Title</label>
+    <input id="evtTitle" type="text" maxlength="80" placeholder="e.g. Bought our first home" autocomplete="off" />
+  </div>
+
+  <div class="field">
+    <label>Marker</label>
+    <div class="emoji-pick" id="evtEmoji"></div>
+  </div>
+
+  <div class="field">
+    <label for="evtDate">Date</label>
+    <input id="evtDate" type="date" />
+  </div>
+
+  <div class="field">
+    <label for="evtDesc">Description</label>
+    <textarea id="evtDesc" maxlength="2000" placeholder="What happened, and why it mattered…"></textarea>
+  </div>
+
+  <div class="sheet-actions">
+    <button class="btn danger" id="deleteEvent" style="display:none" aria-label="Delete event">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+    </button>
+    <button class="btn primary" id="saveEvent" disabled>Save event</button>
+  </div>
+</div>
+
+<!-- Statement import sheet -->
+<div class="sheet" id="importSheet" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+  <div class="grabber"></div>
+  <h2 id="importTitle">Import transactions</h2>
+
+  <div id="importStep1">
+    <p class="imp-note">Upload a <b>CSV</b> exported from your bank or UPI app, or a <b>PDF</b> statement. The file is read <b>on your device</b> and never uploaded anywhere. You'll review and edit every row before anything is added to your ledger.</p>
+    <label class="imp-drop" id="impDrop">
+      <input id="impFile" type="file" accept=".csv,text/csv,application/pdf,.pdf" hidden />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      <span id="impDropLabel">Tap to choose a CSV or PDF file</span>
+    </label>
+    <div class="field" id="impPassWrap" style="display:none; margin-top:14px">
+      <label for="impPass">This PDF is password-protected</label>
+      <input id="impPass" type="text" autocomplete="off" placeholder="Enter the PDF password" />
+      <button class="btn ghost" id="impUnlock" style="margin-top:8px; width:100%">Unlock &amp; read</button>
+    </div>
+    <div class="imp-status" id="impStatus"></div>
+  </div>
+
+  <div id="importStep2" hidden>
+    <div class="imp-map" id="impMap"></div>
+    <div class="imp-batch">
+      <div class="field" style="margin:0">
+        <label>Assign all to</label>
+        <div class="who-pick" id="impWho">
+          <button data-iwho="A" aria-pressed="true"><span class="dot" id="impDotA"></span><span id="impNameA">You</span></button>
+          <button data-iwho="B" aria-pressed="false"><span class="dot" id="impDotB"></span><span id="impNameB">Partner</span></button>
+        </div>
+      </div>
+      <div class="field" style="margin:0">
+        <label for="impCat">Category (optional)</label>
+        <input id="impCat" type="text" placeholder="e.g. Imported" autocomplete="off" />
+      </div>
+    </div>
+    <div class="imp-review-head">
+      <span id="impCount">0 rows</span>
+      <button class="link-btn" id="impToggleAll" style="padding:4px 2px">Select / clear all</button>
+    </div>
+    <div class="imp-review" id="impReview"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="impBack">Back</button>
+      <button class="btn primary" id="impCommit" disabled>Import selected</button>
+    </div>
+  </div>
+</div>
+
 <div class="gate show" id="gate">
   <div class="card">
     <h1>Ledger</h1>
-    <p>Enter the shared password to open your ledger.</p>
-    <input id="gatePass" type="password" inputmode="text" placeholder="Password" autocomplete="current-password" />
-    <button id="gateBtn">Unlock</button>
+    <p id="gateSub">Sign in to open your shared ledger.</p>
+    <button id="googleBtn" class="gbtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      <span>Continue with Google</span>
+    </button>
     <div class="err" id="gateErr"></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!--
+  Firebase Google sign-in. FILL IN your web-app config below (Firebase console →
+  Project settings → General → "Your apps" → Web app → SDK setup → Config).
+  These values are NOT secret — Firebase web config is safe to ship in the page.
+  The matching FIREBASE_PROJECT_ID must also be set as an env var in Vercel.
+-->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+  // ─────────────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "REPLACE_API_KEY",
+    authDomain: "REPLACE_PROJECT_ID.firebaseapp.com",
+    projectId: "REPLACE_PROJECT_ID",
+    appId: "REPLACE_APP_ID"
+  };
+  // ─────────────────────────────────────────────────────────────
+
+  const configured = !/^REPLACE_/.test(firebaseConfig.apiKey);
+  const listeners = [];
+  const CoupleAuth = {
+    ready: false, configured, user: null,
+    onChange(fn) { listeners.push(fn); if (this.ready) fn(this.user); },
+    signIn() {},
+    signOut() {},
+    async getToken() { return null; }
+  };
+  window.CoupleAuth = CoupleAuth;
+
+  if (configured) {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    CoupleAuth.signIn = async function () {
+      try { return await signInWithPopup(auth, provider); }
+      catch (e) {
+        // popups are often blocked on mobile — fall back to full-page redirect
+        if (e && /popup|cancelled|blocked/i.test(e.code || e.message || "")) return signInWithRedirect(auth, provider);
+        throw e;
+      }
+    };
+    CoupleAuth.signOut = function () { return signOut(auth); };
+    CoupleAuth.getToken = async function () {
+      return auth.currentUser ? await auth.currentUser.getIdToken() : null;
+    };
+    getRedirectResult(auth).catch(function () {});
+    onAuthStateChanged(auth, function (u) {
+      CoupleAuth.ready = true;
+      CoupleAuth.user = u ? { uid: u.uid, email: u.email, name: u.displayName, photo: u.photoURL } : null;
+      listeners.forEach(function (fn) { fn(CoupleAuth.user); });
+    });
+  } else {
+    // not configured yet — surface a clear state to the app
+    CoupleAuth.ready = true;
+    setTimeout(function () { listeners.forEach(function (fn) { fn(null); }); }, 0);
+  }
+</script>
 
 <script>
 (function () {
@@ -529,10 +889,10 @@
   // gated by a shared password the two of you know; it is checked server-side
   // and never written into the page source.
   var API = "/api/ledger";
-  var PASS = null;
+  var currentUser = null;   // { uid, email, name, photo } from Firebase
   var KEY_TX = "coupleLedger:tx:v1";
   var KEY_SETTINGS = "coupleLedger:settings:v1";
-  var KEY_PASS = "coupleLedger:pass:v1";
+  var KEY_EVENTS = "coupleLedger:events:v1";
 
   var LS = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -540,19 +900,42 @@
     del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
   };
 
+  function authHeader() {
+    var A = window.CoupleAuth;
+    if (!A || !A.getToken) return Promise.resolve(null);
+    return A.getToken().catch(function () { return null; });
+  }
   function apiGet() {
-    return fetch(API, { headers: { "x-ledger-pass": PASS } }).then(function (r) {
-      if (r.status === 401) { var e = new Error("unauthorized"); e.code = 401; throw e; }
-      if (!r.ok) { var e2 = new Error("server"); e2.code = r.status; throw e2; }
-      return r.json();
+    return authHeader().then(function (tok) {
+      if (!tok) { var e0 = new Error("unauthorized"); e0.code = 401; throw e0; }
+      return fetch(API, { headers: { "authorization": "Bearer " + tok } }).then(function (r) {
+        if (r.status === 401) { var e = new Error("unauthorized"); e.code = 401; throw e; }
+        if (!r.ok) { var e2 = new Error("server"); e2.code = r.status; throw e2; }
+        return r.json();
+      });
     });
   }
   function apiPut(payload) {
-    return fetch(API, {
-      method: "PUT",
-      headers: { "content-type": "application/json", "x-ledger-pass": PASS },
-      body: JSON.stringify(payload)
-    }).then(function (r) { if (!r.ok) { var e = new Error("server"); e.code = r.status; throw e; } return r.json(); });
+    return authHeader().then(function (tok) {
+      if (!tok) { var e0 = new Error("unauthorized"); e0.code = 401; throw e0; }
+      return fetch(API, {
+        method: "PUT",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + tok },
+        body: JSON.stringify(payload)
+      }).then(function (r) { if (!r.ok) { var e = new Error("server"); e.code = r.status; throw e; } return r.json(); });
+    });
+  }
+  function apiAction(action, body) {
+    return authHeader().then(function (tok) {
+      if (!tok) { var e0 = new Error("unauthorized"); e0.code = 401; throw e0; }
+      return fetch(API + "?action=" + action, {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + tok },
+        body: JSON.stringify(body || {})
+      }).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || "err"); e.code = r.status; throw e; } return j; });
+      });
+    });
   }
 
   // ---------------------------------------------------------------- State
@@ -568,7 +951,10 @@
       categories: DEFAULT_CATS
     },
     tx: [],
+    events: [],
+    account: null,   // { email, code, members, shared } from the server
     ui: {
+      view: "ledger",       // ledger | events
       month: monthKeyOf(new Date()),
       filterPerson: "all", // all | A | B
       filterType: "all",   // all | credit | debit
@@ -576,9 +962,14 @@
       searchOpen: false,
       editingId: null,
       draftType: "debit",
-      draftWho: "A"
+      draftWho: "A",
+      editingEventId: null,
+      draftEmoji: "",
+      catEditType: "debit"
     }
   };
+
+  var EVENT_EMOJIS = ["🎉", "🏠", "💍", "👶", "✈️", "🎓", "💼", "🚗", "🩺", "🎂", "💰", "🐣"];
 
   var CUR_META = {
     INR: { sign: "₹", locale: "en-IN" }, GBP: { sign: "£", locale: "en-GB" },
@@ -674,6 +1065,47 @@
     renderList(list);
     renderSummary(list, t);
     updateWhoLabels();
+    renderEvents();
+    applyView();
+  }
+
+  function applyView() {
+    var v = state.ui.view;
+    document.getElementById("ledgerView").hidden = v !== "ledger";
+    document.getElementById("eventsView").hidden = v !== "events";
+    document.getElementById("fabLabel").textContent = v === "events" ? "Add event" : "Add entry";
+    // search only applies to the ledger view
+    document.getElementById("searchToggle").style.display = v === "ledger" ? "" : "none";
+    if (v !== "ledger" && state.ui.searchOpen) {
+      state.ui.searchOpen = false; state.ui.search = "";
+      document.getElementById("searchWrap").classList.remove("open");
+      document.getElementById("searchInput").value = "";
+    }
+    document.querySelectorAll("#tabs button").forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-view") === v ? "true" : "false");
+    });
+  }
+
+  function renderEvents() {
+    var el = document.getElementById("events");
+    if (!el) return;
+    if (!state.events.length) {
+      el.innerHTML = '<div class="empty"><div class="big">No milestones yet</div>' +
+        '<p>Record the big moments — a move, a trip, a new job — so the two of you can look back on them.</p></div>';
+      return;
+    }
+    var sorted = state.events.slice().sort(function (a, b) {
+      return a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : (a.date < b.date ? 1 : -1);
+    });
+    el.innerHTML = sorted.map(function (ev) {
+      var when = ev.date ? new Date(ev.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
+      return '<button class="event-card" data-event="' + esc(ev.id) + '">' +
+        '<span class="emoji">' + esc(ev.emoji || "📌") + "</span>" +
+        '<span class="body"><span class="ttl">' + esc(ev.title || "Untitled") + "</span>" +
+        (when ? '<span class="when">' + esc(when) + "</span>" : "") +
+        (ev.description ? '<span class="desc">' + esc(ev.description) + "</span>" : "") +
+        "</span></button>";
+    }).join("");
   }
 
   function renderFilters() {
@@ -922,7 +1354,85 @@
     toast("Entry deleted");
   }
 
+  // ---------------------------------------------------------------- Life event sheet
+  function renderEmojiPick() {
+    document.getElementById("evtEmoji").innerHTML = EVENT_EMOJIS.map(function (e) {
+      var on = e === state.ui.draftEmoji;
+      return '<button type="button" data-emoji="' + e + '" aria-pressed="' + (on ? "true" : "false") + '">' + e + "</button>";
+    }).join("");
+  }
+  function openEventSheet(editId) {
+    var ui = state.ui;
+    ui.editingEventId = editId || null;
+    var ev = editId ? state.events.find(function (e) { return e.id === editId; }) : null;
+
+    document.getElementById("eventTitle").textContent = ev ? "Edit life event" : "Add life event";
+    document.getElementById("deleteEvent").style.display = ev ? "flex" : "none";
+    document.getElementById("evtTitle").value = ev ? (ev.title || "") : "";
+    document.getElementById("evtDate").value = ev ? ev.date : todayISO();
+    document.getElementById("evtDesc").value = ev ? (ev.description || "") : "";
+    ui.draftEmoji = ev ? (ev.emoji || "") : "";
+
+    renderEmojiPick();
+    validateEvent();
+    showSheet("eventSheet");
+    setTimeout(function () { document.getElementById("evtTitle").focus(); }, 320);
+  }
+  function validateEvent() {
+    var title = document.getElementById("evtTitle").value.trim();
+    document.getElementById("saveEvent").disabled = !title;
+  }
+  function saveEvent() {
+    var title = document.getElementById("evtTitle").value.trim();
+    if (!title) return;
+    var date = document.getElementById("evtDate").value || todayISO();
+    var desc = document.getElementById("evtDesc").value.trim();
+    var emoji = state.ui.draftEmoji || "";
+    var ui = state.ui;
+
+    if (ui.editingEventId) {
+      var ev = state.events.find(function (e) { return e.id === ui.editingEventId; });
+      if (ev) { ev.title = title; ev.date = date; ev.description = desc; ev.emoji = emoji; ev.updatedAt = Date.now(); }
+      toast("Event updated");
+    } else {
+      state.events.push({ id: uid(), title: title, date: date, description: desc, emoji: emoji, createdAt: Date.now(), updatedAt: Date.now() });
+      toast("Life event saved");
+    }
+    persistEvents();
+    closeSheets();
+    render();
+  }
+  function deleteEvent() {
+    if (!state.ui.editingEventId) return;
+    if (!confirm("Delete this life event? This can't be undone.")) return;
+    state.events = state.events.filter(function (e) { return e.id !== state.ui.editingEventId; });
+    persistEvents();
+    closeSheets();
+    render();
+    toast("Event deleted");
+  }
+
   // ---------------------------------------------------------------- Settings sheet
+  function refreshAccountUI() {
+    var av = document.getElementById("acctAv");
+    var nm = document.getElementById("acctName");
+    var em = document.getElementById("acctEmail");
+    if (!av) return;
+    if (currentUser) {
+      nm.textContent = currentUser.name || "Signed in";
+      em.textContent = currentUser.email || "";
+      if (currentUser.photo) { av.innerHTML = '<img src="' + esc(currentUser.photo) + '" alt="" style="width:100%;height:100%;border-radius:99px;object-fit:cover" referrerpolicy="no-referrer" />'; }
+      else { av.textContent = (currentUser.name || currentUser.email || "?").charAt(0).toUpperCase(); }
+    } else {
+      nm.textContent = "Not signed in"; em.textContent = ""; av.textContent = "–";
+    }
+    var acc = state.account;
+    document.getElementById("acctCode").textContent = acc && acc.code ? acc.code : "——";
+    var shared = !!(acc && acc.shared);
+    document.getElementById("acctShared").style.display = shared ? "block" : "none";
+    document.getElementById("leaveSpace").style.display = shared ? "block" : "none";
+  }
+
   function openSettings() {
     var s = state.settings;
     document.getElementById("nameA").value = s.people.A.name;
@@ -930,6 +1440,8 @@
     document.getElementById("currencySel").value = s.currency;
     renderSwatches("swatchesA", "A");
     renderSwatches("swatchesB", "B");
+    renderCategoryEditor();
+    refreshAccountUI();
     document.getElementById("storageNote").textContent =
       "Synced to your private database and cached on this device, so it works offline and stays in step across both phones. Export a JSON backup any time.";
     showSheet("settingsSheet");
@@ -939,6 +1451,44 @@
       var on = state.settings.people[k].color === c;
       return '<button class="swatch" data-color-for="' + k + '" data-color="' + c + '" style="background:' + c + '" aria-pressed="' + (on ? "true" : "false") + '" aria-label="Colour ' + c + '"></button>';
     }).join("");
+  }
+
+  function renderCategoryEditor() {
+    var type = state.ui.catEditType;
+    document.querySelectorAll("#catTypeToggle button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-cat-type") === type ? "true" : "false");
+    });
+    var cats = state.settings.categories[type] || [];
+    document.getElementById("catChips").innerHTML = cats.map(function (c) {
+      return '<span class="cat-chip"><span>' + esc(c) + '</span>' +
+        '<button type="button" data-remove-cat="' + esc(c) + '" aria-label="Remove ' + esc(c) + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg></button></span>';
+    }).join("");
+    var input = document.getElementById("newCatInput");
+    document.getElementById("addCatBtn").disabled = !input.value.trim();
+  }
+  function addCategory() {
+    var type = state.ui.catEditType;
+    var input = document.getElementById("newCatInput");
+    var name = input.value.trim();
+    if (!name) return;
+    var pool = state.settings.categories[type] || (state.settings.categories[type] = []);
+    if (pool.map(function (c) { return c.toLowerCase(); }).indexOf(name.toLowerCase()) !== -1) {
+      toast("That category already exists");
+      input.value = ""; renderCategoryEditor(); return;
+    }
+    pool.unshift(name);
+    state.settings.categories[type] = pool.slice(0, 24);
+    input.value = "";
+    persistSettings();
+    renderCategoryEditor();
+    toast("Category added");
+  }
+  function removeCategory(name) {
+    var type = state.ui.catEditType;
+    state.settings.categories[type] = (state.settings.categories[type] || []).filter(function (c) { return c !== name; });
+    persistSettings();
+    renderCategoryEditor();
   }
   function saveSettingsFromForm() {
     var s = state.settings;
@@ -973,7 +1523,7 @@
   }
   function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function exportJson() {
-    download("couple-ledger-backup.json", JSON.stringify({ settings: state.settings, tx: state.tx, exportedAt: new Date().toISOString() }, null, 2), "application/json");
+    download("couple-ledger-backup.json", JSON.stringify({ settings: state.settings, tx: state.tx, events: state.events, exportedAt: new Date().toISOString() }, null, 2), "application/json");
     toast("JSON backup exported");
   }
   function importJson(file) {
@@ -984,6 +1534,7 @@
         if (!Array.isArray(data.tx)) throw new Error("no transactions");
         if (!confirm("Import " + data.tx.length + " entries? This replaces your current ledger.")) return;
         state.tx = data.tx;
+        if (Array.isArray(data.events)) state.events = data.events;
         if (data.settings) state.settings = Object.assign(state.settings, data.settings);
         persistTx(); persistSettings();
         closeSheets(); render();
@@ -993,31 +1544,357 @@
     reader.readAsText(file);
   }
 
-  // ---------------------------------------------------------------- Persistence (cache + server sync)
+  // ---------------------------------------------------------------- Statement import (CSV / PDF)
+  var imp = { candidates: [], headers: [], rows: [], map: null, who: "A", source: "csv", pdfData: null };
+
+  var MONTHS = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
+  function iso2(y,m,d){ return y + "-" + String(m).padStart(2,"0") + "-" + String(d).padStart(2,"0"); }
+  function parseDateLoose(s){
+    s = String(s == null ? "" : s).trim();
+    var m = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);            // yyyy-mm-dd
+    if (m) return iso2(+m[1], +m[2], +m[3]);
+    m = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);              // dd-mm-yyyy (day-first, IN)
+    if (m) { var y = +m[3]; if (y < 100) y += 2000; return iso2(y, +m[2], +m[1]); }
+    m = s.match(/(\d{1,2})[-\s]([A-Za-z]{3,})[-\s'](\d{2,4})/);          // 12 Jan 2024 / 12-Jan-24
+    if (m) { var mo = MONTHS[m[2].slice(0,3).toLowerCase()]; if (mo) { var yy = +m[3]; if (yy < 100) yy += 2000; return iso2(yy, mo, +m[1]); } }
+    var d = new Date(s); if (!isNaN(d.getTime())) return iso2(d.getFullYear(), d.getMonth()+1, d.getDate());
+    return null;
+  }
+  function parseAmountLoose(s){
+    if (s == null) return NaN;
+    var str = String(s).trim();
+    var neg = /^\(.*\)$/.test(str) || /-\s*[\d]/.test(str) || /\bdr\b/i.test(str);
+    str = str.replace(/[^0-9.]/g, "");                                    // drop currency, commas, letters
+    if (!str || str === ".") return NaN;
+    var n = parseFloat(str);
+    return isNaN(n) ? NaN : (neg ? -n : n);
+  }
+
+  // Minimal RFC4180-ish CSV parser (handles quotes, commas, newlines inside quotes)
+  function parseCSV(text){
+    text = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    var rows = [], row = [], cur = "", q = false;
+    for (var i = 0; i < text.length; i++){
+      var c = text[i];
+      if (q){
+        if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += c;
+      } else {
+        if (c === '"') q = true;
+        else if (c === ","){ row.push(cur); cur = ""; }
+        else if (c === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+        else cur += c;
+      }
+    }
+    if (cur.length || row.length){ row.push(cur); rows.push(row); }
+    // drop fully-empty rows
+    rows = rows.filter(function(r){ return r.some(function(v){ return String(v).trim() !== ""; }); });
+    return rows;
+  }
+
+  function normHead(h){ return String(h||"").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+  var HEAD_ALIASES = {
+    date:   ["date","txndate","transactiondate","valuedate","dateandtime","bookingdate","postingdate"],
+    desc:   ["description","narration","particulars","details","remarks","note","transactiondetails","name","tofrom","merchant"],
+    debit:  ["debit","withdrawal","withdrawalamt","withdrawalamount","dr","paid","moneyout","debitamount","amountdebited"],
+    credit: ["credit","deposit","depositamt","depositamount","cr","received","moneyin","creditamount","amountcredited"],
+    amount: ["amount","amountinr","transactionamount","amt","value"],
+    type:   ["type","drcr","crdr","transactiontype","debitcredit"]
+  };
+  function guessMap(headers){
+    var norm = headers.map(normHead);
+    function find(keys){
+      for (var k = 0; k < keys.length; k++){
+        var idx = norm.indexOf(keys[k]); if (idx !== -1) return idx;
+      }
+      // partial contains
+      for (var j = 0; j < norm.length; j++){
+        for (var m = 0; m < keys.length; m++){ if (norm[j].indexOf(keys[m]) !== -1) return j; }
+      }
+      return -1;
+    }
+    return { date: find(HEAD_ALIASES.date), desc: find(HEAD_ALIASES.desc),
+      debit: find(HEAD_ALIASES.debit), credit: find(HEAD_ALIASES.credit),
+      amount: find(HEAD_ALIASES.amount), type: find(HEAD_ALIASES.type) };
+  }
+
+  function typeFromKeywords(s){
+    s = String(s||"").toLowerCase();
+    if (/\b(cr|credit|received|deposit|refund|cashback|salary|interest)\b/.test(s)) return "credit";
+    if (/\b(dr|debit|paid|sent|withdraw|purchase|payment|spent)\b/.test(s)) return "debit";
+    return null;
+  }
+
+  // Turn parsed CSV rows + a column map into candidate transactions
+  function buildCsvCandidates(rows, map){
+    if (!rows.length) return [];
+    var header = rows[0], body = rows.slice(1);
+    var out = [];
+    body.forEach(function(r){
+      var dateRaw = map.date >= 0 ? r[map.date] : "";
+      var date = parseDateLoose(dateRaw);
+      if (!date) return;                                   // no usable date => skip
+      var note = (map.desc >= 0 ? r[map.desc] : "") || "";
+      var type = null, amount = NaN;
+      var dv = map.debit >= 0 ? parseAmountLoose(r[map.debit]) : NaN;
+      var cv = map.credit >= 0 ? parseAmountLoose(r[map.credit]) : NaN;
+      if (!isNaN(dv) && Math.abs(dv) > 0){ type = "debit"; amount = Math.abs(dv); }
+      else if (!isNaN(cv) && Math.abs(cv) > 0){ type = "credit"; amount = Math.abs(cv); }
+      else if (map.amount >= 0){
+        var av = parseAmountLoose(r[map.amount]);
+        if (!isNaN(av) && av !== 0){
+          amount = Math.abs(av);
+          if (map.type >= 0) type = typeFromKeywords(r[map.type]);
+          if (!type) type = av < 0 ? "debit" : (typeFromKeywords(note) || "credit");
+        }
+      }
+      if (!type || !(amount > 0)) return;
+      out.push({ date: date, type: type, amount: amount, note: String(note).trim().slice(0, 120) });
+    });
+    return out;
+  }
+
+  // Best-effort text->rows for PDF statements
+  function buildPdfCandidates(lines){
+    var out = [];
+    lines.forEach(function(line){
+      var dateM = line.match(/\b(\d{1,2}[-\/.][A-Za-z0-9]{2,}[-\/.]\d{2,4}|\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\b/);
+      if (!dateM) return;
+      var date = parseDateLoose(dateM[1]); if (!date) return;
+      var amts = line.match(/\d[\d,]*\.\d{2}/g);            // amounts with 2 decimals
+      if (!amts || !amts.length) return;
+      var amount = parseAmountLoose(amts[amts.length - (amts.length > 1 ? 2 : 1)]); // 2nd-last if a running balance trails
+      if (!(amount > 0)) amount = parseAmountLoose(amts[amts.length - 1]);
+      if (!(amount > 0)) return;
+      var note = line.replace(dateM[0], "").replace(/\d[\d,]*\.\d{2}/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 120);
+      var type = typeFromKeywords(line) || "debit";
+      out.push({ date: date, type: type, amount: Math.abs(amount), note: note });
+    });
+    return out;
+  }
+
+  function txSignatureSet(){
+    var set = {};
+    state.tx.forEach(function(t){ set[t.date + "|" + t.type + "|" + t.amount.toFixed(2) + "|" + (t.note||"").toLowerCase().trim()] = 1; });
+    return set;
+  }
+
+  function openImport(){
+    imp = { candidates: [], headers: [], rows: [], map: null, who: "A", source: "csv", pdfData: null };
+    document.getElementById("importStep1").hidden = false;
+    document.getElementById("importStep2").hidden = true;
+    document.getElementById("impPassWrap").style.display = "none";
+    document.getElementById("impStatus").textContent = "";
+    document.getElementById("impStatus").className = "imp-status";
+    document.getElementById("impFile").value = "";
+    document.getElementById("impPass").value = "";
+    document.getElementById("impDropLabel").textContent = "Tap to choose a CSV or PDF file";
+    showSheet("importSheet");
+  }
+
+  function impSetStatus(msg, isErr){
+    var el = document.getElementById("impStatus");
+    el.textContent = msg || "";
+    el.className = "imp-status" + (isErr ? " err" : "");
+  }
+
+  function handleImportFile(file){
+    if (!file) return;
+    imp.source = /\.pdf$/i.test(file.name) || file.type === "application/pdf" ? "pdf" : "csv";
+    document.getElementById("impDropLabel").textContent = file.name;
+    if (imp.source === "csv"){
+      var reader = new FileReader();
+      reader.onload = function(){
+        try {
+          var rows = parseCSV(String(reader.result));
+          if (rows.length < 2) { impSetStatus("Couldn't find rows in that CSV.", true); return; }
+          imp.rows = rows; imp.headers = rows[0]; imp.map = guessMap(rows[0]);
+          goToReview();
+        } catch (e){ impSetStatus("That CSV couldn't be read.", true); }
+      };
+      reader.readAsText(file);
+    } else {
+      var fr = new FileReader();
+      fr.onload = function(){ imp.pdfData = new Uint8Array(fr.result); readPdf(); };
+      fr.readAsArrayBuffer(file);
+    }
+  }
+
+  var _pdfLibLoading = null;
+  function loadPdfLib(){
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (_pdfLibLoading) return _pdfLibLoading;
+    _pdfLibLoading = new Promise(function(resolve, reject){
+      var s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      s.onload = function(){
+        try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e){}
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = function(){ reject(new Error("pdf lib failed")); };
+      document.head.appendChild(s);
+    });
+    return _pdfLibLoading;
+  }
+
+  function readPdf(){
+    impSetStatus("Reading PDF…");
+    loadPdfLib().then(function(pdfjsLib){
+      var pass = document.getElementById("impPass").value || undefined;
+      var task = pdfjsLib.getDocument({ data: imp.pdfData, password: pass });
+      return task.promise;
+    }).then(function(pdf){
+      var lines = [];
+      var page = 1;
+      function next(){
+        if (page > pdf.numPages) { finishPdf(lines); return; }
+        pdf.getPage(page).then(function(p){
+          return p.getTextContent();
+        }).then(function(tc){
+          // group text items into visual lines by rounded y position
+          var byY = {};
+          tc.items.forEach(function(it){
+            var y = Math.round(it.transform[5]);
+            (byY[y] = byY[y] || []).push({ x: it.transform[4], s: it.str });
+          });
+          Object.keys(byY).map(Number).sort(function(a,b){ return b - a; }).forEach(function(y){
+            var line = byY[y].sort(function(a,b){ return a.x - b.x; }).map(function(o){ return o.s; }).join(" ").replace(/\s{2,}/g, " ").trim();
+            if (line) lines.push(line);
+          });
+          page++; next();
+        }).catch(function(){ page++; next(); });
+      }
+      next();
+    }).catch(function(err){
+      var name = err && (err.name || "");
+      if (name === "PasswordException" || /password/i.test(String(err && err.message))){
+        document.getElementById("impPassWrap").style.display = "block";
+        impSetStatus("This PDF needs a password. Enter it above, then tap Unlock & read.", true);
+      } else if (/pdf lib failed/.test(String(err && err.message))){
+        impSetStatus("Couldn't load the PDF reader (no internet?). CSV import still works offline.", true);
+      } else {
+        impSetStatus("Couldn't read that PDF. It may be a scanned image, which isn't supported — try a CSV export instead.", true);
+      }
+    });
+  }
+  function finishPdf(lines){
+    imp.candidates = dedupMark(buildPdfCandidates(lines));
+    if (!imp.candidates.length){
+      impSetStatus("No transactions could be detected in that PDF. Bank PDF layouts vary a lot — a CSV export is far more reliable.", true);
+      return;
+    }
+    imp.map = null; // no mapping UI for PDF
+    goToReview(true);
+  }
+
+  function dedupMark(list){
+    var sig = txSignatureSet();
+    return list.map(function(c){
+      c.dup = !!sig[c.date + "|" + c.type + "|" + c.amount.toFixed(2) + "|" + (c.note||"").toLowerCase().trim()];
+      c.on = !c.dup;      // duplicates unchecked by default
+      return c;
+    });
+  }
+
+  function renderMapUI(){
+    var wrap = document.getElementById("impMap");
+    if (imp.source === "pdf" || !imp.headers.length){ wrap.innerHTML = ""; return; }
+    var opts = function(sel){
+      return '<option value="-1"' + (sel === -1 ? " selected" : "") + ">— none —</option>" +
+        imp.headers.map(function(h, i){ return '<option value="' + i + '"' + (sel === i ? " selected" : "") + ">" + esc(h || ("Column " + (i+1))) + "</option>"; }).join("");
+    };
+    var f = function(key, label){ return '<div class="field"><label>' + label + '</label><select data-mapkey="' + key + '">' + opts(imp.map[key]) + "</select></div>"; };
+    wrap.innerHTML = f("date","Date") + f("desc","Description") + f("debit","Money out (debit)") +
+      f("credit","Money in (credit)") + f("amount","Amount (if single col)") + f("type","Type (Dr/Cr)");
+  }
+
+  function recomputeFromMap(){
+    imp.candidates = dedupMark(buildCsvCandidates(imp.rows, imp.map));
+    renderReview();
+  }
+
+  function goToReview(isPdf){
+    if (!isPdf) imp.candidates = dedupMark(buildCsvCandidates(imp.rows, imp.map));
+    document.getElementById("importStep1").hidden = true;
+    document.getElementById("importStep2").hidden = false;
+    document.getElementById("impNameA").textContent = personName("A");
+    document.getElementById("impNameB").textContent = personName("B");
+    document.getElementById("impDotA").style.background = personColor("A");
+    document.getElementById("impDotB").style.background = personColor("B");
+    imp.who = "A";
+    document.querySelectorAll("#impWho button").forEach(function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-iwho") === "A" ? "true" : "false"); });
+    renderMapUI();
+    renderReview();
+  }
+
+  function renderReview(){
+    var host = document.getElementById("impReview");
+    var list = imp.candidates;
+    var selectable = list.length;
+    var chosen = list.filter(function(c){ return c.on; }).length;
+    var dups = list.filter(function(c){ return c.dup; }).length;
+    document.getElementById("impCount").textContent =
+      selectable + " row" + (selectable === 1 ? "" : "s") + " found · " + chosen + " selected" + (dups ? " · " + dups + " look like duplicates" : "");
+    document.getElementById("impCommit").disabled = chosen === 0;
+
+    if (!selectable){ host.innerHTML = '<div class="imp-status err" style="margin:8px 2px">No rows matched. Adjust the column mapping above.</div>'; return; }
+    host.innerHTML = list.map(function(c, i){
+      var when = new Date(c.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
+      return '<div class="imp-row ' + (c.on ? "" : "off ") + (c.dup ? "dup" : "") + '" data-i="' + i + '">' +
+        '<input type="checkbox" ' + (c.on ? "checked" : "") + ' data-check="' + i + '" />' +
+        '<span class="rmid"><span class="rn">' + esc(c.note || "(no description)") + "</span>" +
+        '<span class="rd">' + esc(when) + (c.dup ? ' · <span class="dupflag">already in ledger</span>' : "") + "</span></span>" +
+        '<button class="rtype ' + c.type + '" data-type="' + i + '">' + (c.type === "credit" ? "In" : "Out") + "</button>" +
+        '<span class="ramt ' + c.type + '">' + (c.type === "credit" ? "+ " : "− ") + esc(money(c.amount)) + "</span></div>";
+    }).join("");
+  }
+
+  function commitImport(){
+    var cat = document.getElementById("impCat").value.trim();
+    var chosen = imp.candidates.filter(function(c){ return c.on; });
+    if (!chosen.length) return;
+    var now = Date.now();
+    chosen.forEach(function(c){
+      state.tx.push({ id: uid(), type: c.type, amount: c.amount, note: c.note, category: cat, person: imp.who, date: c.date, createdAt: now, updatedAt: now });
+    });
+    // jump to the most recent imported month
+    var latest = chosen.map(function(c){ return c.date; }).sort().pop();
+    if (latest) state.ui.month = latest.slice(0, 7);
+    persistTx();
+    closeSheets();
+    render();
+    toast("Imported " + chosen.length + " transaction" + (chosen.length === 1 ? "" : "s"));
+  }
+
+
   function cacheNow() {
     LS.set(KEY_TX, JSON.stringify(state.tx));
     LS.set(KEY_SETTINGS, JSON.stringify(state.settings));
+    LS.set(KEY_EVENTS, JSON.stringify(state.events));
   }
   var _syncTimer, _offline = false;
   function syncUp() {
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(function () {
-      apiPut({ tx: state.tx, settings: state.settings }).then(function () {
+      apiPut({ tx: state.tx, settings: state.settings, events: state.events }).then(function () {
         if (_offline) { _offline = false; toast("Back online — synced"); }
       }).catch(function (err) {
-        if (err && err.code === 401) { showGate("Session expired — enter the password again"); return; }
+        if (err && err.code === 401) { showGate("Your session expired — sign in again."); return; }
         _offline = true; toast("Offline — saved on this device");
       });
     }, 350);
   }
   function persistTx() { cacheNow(); syncUp(); }
   function persistSettings() { cacheNow(); syncUp(); }
+  function persistEvents() { cacheNow(); syncUp(); }
 
   function hydrateFromCache() {
     var rawSet = LS.get(KEY_SETTINGS);
     if (rawSet) { try { var s = JSON.parse(rawSet); state.settings = Object.assign(state.settings, s); if (!s.categories) state.settings.categories = DEFAULT_CATS; } catch (e) {} }
     var rawTx = LS.get(KEY_TX);
     if (rawTx) { try { var arr = JSON.parse(rawTx); if (Array.isArray(arr)) state.tx = arr; } catch (e) {} }
+    var rawEv = LS.get(KEY_EVENTS);
+    if (rawEv) { try { var evs = JSON.parse(rawEv); if (Array.isArray(evs)) state.events = evs; } catch (e) {} }
   }
 
   async function load() {
@@ -1025,20 +1902,23 @@
     render(); // instant paint from the local cache
     try {
       var data = await apiGet();
+      if (data && data.account) { state.account = data.account; refreshAccountUI(); }
       var serverTx = data && Array.isArray(data.tx) ? data.tx : null;
       var serverSet = data && data.settings ? data.settings : null;
-      var haveServerData = (serverTx && serverTx.length) || serverSet;
+      var serverEvents = data && Array.isArray(data.events) ? data.events : null;
+      var haveServerData = (serverTx && serverTx.length) || serverSet || (serverEvents && serverEvents.length);
       if (haveServerData) {
         if (serverTx) state.tx = serverTx;
         if (serverSet) { state.settings = Object.assign(state.settings, serverSet); if (!serverSet.categories) state.settings.categories = DEFAULT_CATS; }
+        if (serverEvents) state.events = serverEvents;
         cacheNow();
         render();
-      } else if (state.tx.length) {
-        // server is empty but this device has entries — seed the server
+      } else if (state.tx.length || state.events.length) {
+        // server is empty but this device has data — seed the server
         syncUp();
       }
     } catch (err) {
-      if (err && err.code === 401) { showGate("That password didn't match — try again"); return; }
+      if (err && err.code === 401) { showGate("Please sign in to continue."); return; }
       _offline = true; // no server reach: keep working from the cache
     }
   }
@@ -1053,8 +1933,11 @@
     document.getElementById("scrim").classList.remove("open");
     document.getElementById("entrySheet").classList.remove("open");
     document.getElementById("settingsSheet").classList.remove("open");
+    document.getElementById("eventSheet").classList.remove("open");
+    document.getElementById("importSheet").classList.remove("open");
     document.body.style.overflow = "";
     state.ui.editingId = null;
+    state.ui.editingEventId = null;
   }
 
   var _toastTimer;
@@ -1068,9 +1951,107 @@
   document.getElementById("prevMonth").addEventListener("click", function () { state.ui.month = shiftMonth(state.ui.month, -1); render(); });
   document.getElementById("nextMonth").addEventListener("click", function () { state.ui.month = shiftMonth(state.ui.month, 1); render(); });
 
-  document.getElementById("addBtn").addEventListener("click", function () { openSheet(null); });
+  document.getElementById("addBtn").addEventListener("click", function () {
+    if (state.ui.view === "events") openEventSheet(null); else openSheet(null);
+  });
   document.getElementById("openSettings").addEventListener("click", openSettings);
   document.getElementById("scrim").addEventListener("click", closeSheets);
+
+  // view tabs
+  document.getElementById("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-view]"); if (!b) return;
+    state.ui.view = b.getAttribute("data-view");
+    applyView();
+  });
+  document.getElementById("addEventTop").addEventListener("click", function () { openEventSheet(null); });
+  document.getElementById("events").addEventListener("click", function (e) {
+    var card = e.target.closest("[data-event]"); if (!card) return;
+    openEventSheet(card.getAttribute("data-event"));
+  });
+
+  // event sheet controls
+  document.getElementById("evtTitle").addEventListener("input", validateEvent);
+  document.getElementById("evtEmoji").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-emoji]"); if (!b) return;
+    var val = b.getAttribute("data-emoji");
+    state.ui.draftEmoji = state.ui.draftEmoji === val ? "" : val; // tap again to clear
+    renderEmojiPick();
+  });
+  document.getElementById("saveEvent").addEventListener("click", saveEvent);
+  document.getElementById("deleteEvent").addEventListener("click", deleteEvent);
+
+  // category editor (settings)
+  document.getElementById("catTypeToggle").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cat-type]"); if (!b) return;
+    state.ui.catEditType = b.getAttribute("data-cat-type");
+    renderCategoryEditor();
+  });
+  document.getElementById("catChips").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-remove-cat]"); if (!b) return;
+    removeCategory(b.getAttribute("data-remove-cat"));
+  });
+  document.getElementById("newCatInput").addEventListener("input", function () {
+    document.getElementById("addCatBtn").disabled = !this.value.trim();
+  });
+  document.getElementById("newCatInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); addCategory(); }
+  });
+  document.getElementById("addCatBtn").addEventListener("click", addCategory);
+
+  // account + sharing
+  document.getElementById("copyCode").addEventListener("click", function () {
+    var code = state.account && state.account.code; if (!code) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(function () { toast("Code copied"); }).catch(function () { toast(code); });
+    else toast(code);
+  });
+  document.getElementById("joinCode").addEventListener("input", function () {
+    document.getElementById("joinBtn").disabled = this.value.trim().length < 4;
+  });
+  document.getElementById("joinBtn").addEventListener("click", function () {
+    var code = document.getElementById("joinCode").value.trim().toUpperCase();
+    if (code.length < 4) return;
+    var note = document.getElementById("joinNote");
+    var btn = document.getElementById("joinBtn"); btn.disabled = true; note.textContent = "Joining\u2026";
+    apiAction("join", { code: code }).then(function (j) {
+      if (j.account) state.account = j.account;
+      note.textContent = "Joined! Loading the shared ledger\u2026";
+      document.getElementById("joinCode").value = "";
+      return apiGet();
+    }).then(function (data) {
+      if (data && data.account) state.account = data.account;
+      if (data && Array.isArray(data.tx)) state.tx = data.tx;
+      if (data && Array.isArray(data.events)) state.events = data.events;
+      if (data && data.settings) state.settings = Object.assign(state.settings, data.settings);
+      cacheNow(); refreshAccountUI(); render();
+      toast("You're now sharing this ledger");
+      document.getElementById("joinNote").textContent = "";
+    }).catch(function (err) {
+      btn.disabled = false;
+      note.textContent = err && err.code === 404 ? "That code didn't match any ledger." : "Couldn't join — check the code and your connection.";
+    });
+  });
+  document.getElementById("leaveSpace").addEventListener("click", function () {
+    if (!confirm("Leave the shared ledger and go back to your own private one? Your partner keeps the shared ledger.")) return;
+    apiAction("leave", {}).then(function (j) {
+      if (j.account) state.account = j.account;
+      return apiGet();
+    }).then(function (data) {
+      if (data && data.account) state.account = data.account;
+      state.tx = Array.isArray(data.tx) ? data.tx : [];
+      state.events = Array.isArray(data.events) ? data.events : [];
+      if (data && data.settings) state.settings = Object.assign(state.settings, data.settings);
+      cacheNow(); refreshAccountUI(); render();
+      toast("Back in your own ledger");
+    }).catch(function () { toast("Couldn't switch — try again"); });
+  });
+  document.getElementById("signOutBtn").addEventListener("click", function () {
+    if (!window.CoupleAuth) return;
+    closeSheets();
+    window.CoupleAuth.signOut().then(function () {
+      LS.del(KEY_TX); LS.del(KEY_SETTINGS); LS.del(KEY_EVENTS);
+      toast("Signed out");
+    }).catch(function () {});
+  });
 
   document.getElementById("searchToggle").addEventListener("click", function () {
     state.ui.searchOpen = !state.ui.searchOpen;
@@ -1140,41 +2121,92 @@
   document.getElementById("importJson").addEventListener("click", function () { document.getElementById("importFile").click(); });
   document.getElementById("importFile").addEventListener("change", function (e) { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ""; });
 
+  // statement importer
+  document.getElementById("openImport").addEventListener("click", openImport);
+  document.getElementById("impFile").addEventListener("change", function (e) { if (e.target.files[0]) handleImportFile(e.target.files[0]); });
+  document.getElementById("impUnlock").addEventListener("click", readPdf);
+  document.getElementById("impMap").addEventListener("change", function (e) {
+    var sel = e.target.closest("[data-mapkey]"); if (!sel) return;
+    imp.map[sel.getAttribute("data-mapkey")] = parseInt(sel.value, 10);
+    recomputeFromMap();
+  });
+  document.getElementById("impWho").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-iwho]"); if (!b) return;
+    imp.who = b.getAttribute("data-iwho");
+    document.querySelectorAll("#impWho button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+  });
+  document.getElementById("impToggleAll").addEventListener("click", function () {
+    var anyOff = imp.candidates.some(function (c) { return !c.on; });
+    imp.candidates.forEach(function (c) { c.on = anyOff; });
+    renderReview();
+  });
+  document.getElementById("impReview").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-type]");
+    if (t) { var i = +t.getAttribute("data-type"); imp.candidates[i].type = imp.candidates[i].type === "credit" ? "debit" : "credit"; renderReview(); return; }
+  });
+  document.getElementById("impReview").addEventListener("change", function (e) {
+    var c = e.target.closest("[data-check]"); if (!c) return;
+    imp.candidates[+c.getAttribute("data-check")].on = c.checked;
+    renderReview();
+  });
+  document.getElementById("impBack").addEventListener("click", function () {
+    document.getElementById("importStep2").hidden = true;
+    document.getElementById("importStep1").hidden = false;
+  });
+  document.getElementById("impCommit").addEventListener("click", commitImport);
+
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheets(); });
 
   // ---------------------------------------------------------------- Auth gate + init
   var gate = document.getElementById("gate");
-  var gateInput = document.getElementById("gatePass");
   var gateErr = document.getElementById("gateErr");
-  var gateBtn = document.getElementById("gateBtn");
+  var googleBtn = document.getElementById("googleBtn");
+  var gateSub = document.getElementById("gateSub");
 
   function showGate(msg) {
-    PASS = null; LS.del(KEY_PASS);
     gateErr.textContent = msg || "";
     gate.classList.add("show");
-    setTimeout(function () { gateInput.focus(); }, 60);
   }
-  function hideGate() { gate.classList.remove("show"); gateInput.value = ""; }
+  function hideGate() { gate.classList.remove("show"); }
 
-  function tryUnlock(candidate) {
-    if (!candidate) return;
-    gateBtn.disabled = true; gateErr.textContent = "Checking\u2026";
-    PASS = candidate;
-    apiGet().then(function () {
-      LS.set(KEY_PASS, candidate); hideGate();
-      gateBtn.disabled = false; gateErr.textContent = "";
-      load();
-    }).catch(function (err) {
-      gateBtn.disabled = false; PASS = null;
-      if (err && err.code === 401) showGate("Wrong password \u2014 try again");
-      else gateErr.textContent = "Can't reach the server. Check your connection and retry.";
+  function whenAuthReady(cb) {
+    if (window.CoupleAuth) return cb();
+    var t = setInterval(function () { if (window.CoupleAuth) { clearInterval(t); cb(); } }, 40);
+  }
+
+  googleBtn.addEventListener("click", function () {
+    if (!window.CoupleAuth || !window.CoupleAuth.configured) {
+      showGate("Sign-in isn't configured yet. Add your Firebase web config to index.html.");
+      return;
+    }
+    googleBtn.disabled = true; gateErr.textContent = "Opening Google\u2026";
+    window.CoupleAuth.signIn().catch(function (e) {
+      googleBtn.disabled = false;
+      gateErr.textContent = "Sign-in didn't complete. Please try again.";
     });
-  }
-  gateBtn.addEventListener("click", function () { tryUnlock(gateInput.value.trim()); });
-  gateInput.addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(gateInput.value.trim()); });
+    // onAuthStateChanged drives the rest; re-enable shortly in case of silent cancel
+    setTimeout(function () { googleBtn.disabled = false; }, 4000);
+  });
 
-  var savedPass = LS.get(KEY_PASS);
-  if (savedPass) { PASS = savedPass; hideGate(); load(); }
-  else { hydrateFromCache(); render(); showGate(""); }
+  function onAuthChange(user) {
+    if (user) {
+      currentUser = user;
+      gateErr.textContent = "";
+      hideGate();
+      refreshAccountUI();
+      load();
+    } else {
+      currentUser = null;
+      state.tx = []; state.events = []; state.account = null;
+      showGate(window.CoupleAuth && !window.CoupleAuth.configured
+        ? "Sign-in isn't configured yet. Add your Firebase web config to index.html."
+        : "");
+    }
+  }
+
+  // instant paint from cache, then let auth decide what to show
+  hydrateFromCache(); render();
+  whenAuthReady(function () { window.CoupleAuth.onChange(onAuthChange); });
 })();
 </script>
+</html>
